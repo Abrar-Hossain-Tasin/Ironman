@@ -8,6 +8,7 @@ import { Trash2, History, LayoutGrid, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { PricingTable } from '@/components/ui/pricing-table'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import { apiFetch, endpoints } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { decorateCategories, decorateClothingTypes } from '@/lib/catalog'
@@ -16,6 +17,7 @@ import type { ClothingType, PricingCell, ServiceCategory } from '@/types'
 
 export function AdminPricing() {
   const token = useAuthStore((state) => state.accessToken)
+  const confirm = useConfirm()
   const [categories, setCategories] = useState<ServiceCategory[]>([])
   const [clothingTypes, setClothingTypes] = useState<ClothingType[]>([])
   const [pricing, setPricing] = useState<PricingCell[]>([])
@@ -80,7 +82,14 @@ export function AdminPricing() {
   }
 
   async function deactivatePrice(id: string) {
-    if (!token || !confirm('Are you sure you want to deactivate this price?')) return
+    if (!token) return
+    const { confirmed } = await confirm({
+      title: 'Deactivate this price?',
+      message: 'It will stop applying to new orders.',
+      confirmLabel: 'Deactivate',
+      tone: 'danger'
+    })
+    if (!confirmed) return
     try {
       await apiFetch(endpoints.adminDeactivatePricing(id), {
         method: 'DELETE',

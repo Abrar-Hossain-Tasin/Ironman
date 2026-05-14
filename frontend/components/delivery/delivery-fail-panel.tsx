@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react'
 import { AlertOctagon } from 'lucide-react'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import { apiFetch, ApiError } from '@/lib/api'
 import type { Assignment } from '@/types'
 
@@ -18,6 +19,7 @@ type Props = {
  * with the button when it's clearly inapplicable.
  */
 export function DeliveryFailPanel({ assignment, token, onFailed }: Props) {
+  const confirm = useConfirm()
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -33,9 +35,13 @@ export function DeliveryFailPanel({ assignment, token, onFailed }: Props) {
       setError('Give a short reason so the customer knows what happened.')
       return
     }
-    if (!window.confirm(`Mark ${assignment.orderNumber} as failed delivery? The customer will be notified.`)) {
-      return
-    }
+    const { confirmed } = await confirm({
+      title: `Mark ${assignment.orderNumber} failed?`,
+      message: 'The customer will be notified and the order goes back to admin for re-assignment or return.',
+      confirmLabel: 'Mark delivery failed',
+      tone: 'danger'
+    })
+    if (!confirmed) return
     setSubmitting(true)
     setError(null)
     try {

@@ -5,6 +5,7 @@ import { Loader2, WalletCards } from 'lucide-react'
 import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { TableSkeleton } from '@/components/ui/skeleton'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { formatBdt, statusLabel } from '@/lib/utils'
@@ -19,6 +20,7 @@ const STATUS_TABS: { value: '' | RefundStatus; label: string }[] = [
 
 export function AdminRefunds() {
   const token = useAuthStore((state) => state.accessToken)
+  const confirm = useConfirm()
   const [refunds, setRefunds] = useState<RefundResponse[]>([])
   const [orders, setOrders] = useState<OrderResponse[]>([])
   const [loading, setLoading] = useState(false)
@@ -107,8 +109,16 @@ export function AdminRefunds() {
 
   async function fail(refund: RefundResponse) {
     if (!token) return
-    const reason = prompt('Reason for failure?') ?? ''
-    if (!reason.trim()) return
+    const { confirmed, reason } = await confirm({
+      title: 'Mark refund as failed?',
+      message: `The ${formatBdt(refund.amount)} refund will be recorded as failed.`,
+      confirmLabel: 'Mark failed',
+      tone: 'danger',
+      requireReason: true,
+      reasonLabel: 'Reason for failure',
+      reasonPlaceholder: 'e.g. bKash transaction reversed'
+    })
+    if (!confirmed) return
     try {
       await apiFetch(`/admin/refunds/${refund.id}/fail?reason=${encodeURIComponent(reason)}`, {
         method: 'PUT',

@@ -5,6 +5,7 @@ import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { TableSkeleton } from '@/components/ui/skeleton'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { formatBdt } from '@/lib/utils'
@@ -74,6 +75,7 @@ function toBody(draft: DraftCoupon) {
 
 export function AdminCoupons() {
   const token = useAuthStore((state) => state.accessToken)
+  const confirm = useConfirm()
   const [coupons, setCoupons] = useState<CouponResponse[]>([])
   const [loading, setLoading] = useState(false)
   const [draft, setDraft] = useState<DraftCoupon>(emptyDraft)
@@ -136,7 +138,13 @@ export function AdminCoupons() {
 
   async function deactivate(coupon: CouponResponse) {
     if (!token) return
-    if (!confirm(`Deactivate coupon ${coupon.code}? It will no longer apply to new orders.`)) return
+    const { confirmed } = await confirm({
+      title: `Deactivate ${coupon.code}?`,
+      message: 'It will no longer apply to new orders.',
+      confirmLabel: 'Deactivate',
+      tone: 'danger'
+    })
+    if (!confirmed) return
     try {
       await apiFetch(`/admin/coupons/${coupon.id}`, { method: 'DELETE', token })
       setMessage(`${coupon.code} deactivated`)

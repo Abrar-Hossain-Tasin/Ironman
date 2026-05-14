@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { statusLabel } from '@/lib/utils'
@@ -23,6 +24,7 @@ type StaffDraft = {
 
 export function AdminStaff() {
   const token = useAuthStore((state) => state.accessToken)
+  const confirm = useConfirm()
   const [staff, setStaff] = useState<UserSummary[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -154,8 +156,14 @@ export function AdminStaff() {
   async function toggleActive(person: UserSummary) {
     if (!token) return
     const goingInactive = person.active
-    if (goingInactive && !window.confirm(`Deactivate ${person.fullName}? They won't be able to log in.`)) {
-      return
+    if (goingInactive) {
+      const { confirmed } = await confirm({
+        title: `Deactivate ${person.fullName}?`,
+        message: "They won't be able to log in until you reactivate the account.",
+        confirmLabel: 'Deactivate',
+        tone: 'danger'
+      })
+      if (!confirmed) return
     }
     try {
       const updated = goingInactive

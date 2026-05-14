@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from 'react'
 import { Camera, Loader2, Pencil, Star, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { StorageNotConfiguredError, uploadProfilePicture } from '@/lib/storage'
@@ -34,10 +35,12 @@ export function CustomerProfile() {
   const token = useAuthStore((state) => state.accessToken)
   const setAuthUser = useAuthStore((state) => state.setUser)
   const authUser = useAuthStore((state) => state.user)
+  const confirm = useConfirm()
   const [user, setUser] = useState<UserSummary | null>(null)
   const [addresses, setAddresses] = useState<AddressResponse[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [profileSaving, setProfileSaving] = useState(false)
 
   const [addressDraft, setAddressDraft] = useState<AddressDraft>(emptyAddressDraft)
   const [editorOpen, setEditorOpen] = useState(false)
@@ -96,6 +99,7 @@ export function CustomerProfile() {
     event.preventDefault()
     if (!token) return
     const form = new FormData(event.currentTarget)
+    setProfileSaving(true)
     try {
       const updated = await apiFetch<UserSummary>('/users/me', {
         method: 'PUT',
@@ -114,6 +118,8 @@ export function CustomerProfile() {
       flashMessage('Profile updated')
     } catch (err) {
       setError(err instanceof ApiError ? err.detail || err.message : err instanceof Error ? err.message : 'Could not save profile')
+    } finally {
+      setProfileSaving(false)
     }
   }
 
@@ -221,7 +227,13 @@ export function CustomerProfile() {
 
   async function deleteAddress(address: AddressResponse) {
     if (!token) return
-    if (!window.confirm(`Delete address "${address.label}"?`)) return
+    const { confirmed } = await confirm({
+      title: `Delete "${address.label}"?`,
+      message: 'This address will be removed from your saved addresses.',
+      confirmLabel: 'Delete',
+      tone: 'danger'
+    })
+    if (!confirmed) return
     try {
       await apiFetch(`/users/me/addresses/${address.id}`, { method: 'DELETE', token })
       setAddresses((current) => current.filter((row) => row.id !== address.id))
@@ -343,8 +355,12 @@ export function CustomerProfile() {
                 required
               />
             </label>
-            <button className="tap-target rounded-lg bg-ironman-red px-4 py-2 font-semibold text-white" type="submit">
-              Save profile
+            <button
+              type="submit"
+              disabled={profileSaving}
+              className="tap-target rounded-lg bg-ironman-red px-4 py-2 font-semibold text-white disabled:opacity-60"
+            >
+              {profileSaving ? 'Saving…' : 'Save profile'}
             </button>
           </form>
 

@@ -5,6 +5,7 @@ import { Toaster } from 'sonner'
 import type { ReactNode } from 'react'
 import { CookieConsentBanner } from '@/components/cookie-consent-banner'
 import { PwaRegister } from '@/components/pwa-register'
+import { ConfirmProvider } from '@/components/ui/confirm-dialog'
 
 type AppProvidersProps = {
   children: ReactNode
@@ -15,9 +16,11 @@ type AppProvidersProps = {
 export function AppProviders({ children, locale, messages }: AppProvidersProps) {
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      {children}
-      <CookieConsentBanner />
-      <PwaRegister />
+      <ConfirmProvider>
+        {children}
+        <CookieConsentBanner />
+        <PwaRegister />
+      </ConfirmProvider>
       <Toaster position="top-right" richColors closeButton />
     </NextIntlClientProvider>
   )

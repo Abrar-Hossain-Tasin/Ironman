@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react'
 import { Loader2, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import type { UserRole } from '@/types'
@@ -19,6 +20,7 @@ const AUDIENCES: { value: 'all' | UserRole; label: string; description: string }
 
 export function AdminBroadcasts() {
   const token = useAuthStore((state) => state.accessToken)
+  const confirm = useConfirm()
   const [audience, setAudience] = useState<'all' | UserRole>('all')
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -31,9 +33,12 @@ export function AdminBroadcasts() {
       toast.error('Title and message are too short.')
       return
     }
-    if (!confirm(`Send this broadcast to ${AUDIENCES.find((a) => a.value === audience)?.label}? Recipients will be notified immediately.`)) {
-      return
-    }
+    const { confirmed } = await confirm({
+      title: 'Send this broadcast?',
+      message: `${AUDIENCES.find((a) => a.value === audience)?.label} will be notified immediately. There is no recall.`,
+      confirmLabel: 'Send broadcast'
+    })
+    if (!confirmed) return
     setSubmitting(true)
     try {
       const result = await apiFetch<{ message: string }>('/admin/notifications/broadcast', {
