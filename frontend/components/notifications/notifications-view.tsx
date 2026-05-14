@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { CheckCheck, Inbox } from 'lucide-react'
+import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
@@ -29,6 +30,8 @@ export function NotificationsView() {
     try {
       const data = await apiFetch<NotificationResponse[]>('/notifications', { token })
       setItems(data ?? [])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not load notifications')
     } finally {
       setLoading(false)
     }
@@ -58,13 +61,21 @@ export function NotificationsView() {
   }, [token, userId])
 
   async function markAll() {
-    await apiFetch('/notifications/read-all', { method: 'PUT', token })
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })))
+    try {
+      await apiFetch('/notifications/read-all', { method: 'PUT', token })
+      setItems((prev) => prev.map((n) => ({ ...n, read: true })))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not mark all as read')
+    }
   }
 
   async function markOne(id: string) {
-    await apiFetch(`/notifications/${id}/read`, { method: 'PUT', token })
-    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
+    try {
+      await apiFetch(`/notifications/${id}/read`, { method: 'PUT', token })
+      setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not mark as read')
+    }
   }
 
   const filtered = filter === 'unread' ? items.filter((i) => !i.read) : items

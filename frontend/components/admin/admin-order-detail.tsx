@@ -83,6 +83,7 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
   const [tracking, setTracking] = useState<TrackingEvent[]>([])
   const [payments, setPayments] = useState<PaymentLedgerRow[]>([])
   const [staff, setStaff] = useState<UserSummary[]>([])
+  const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [assignmentType, setAssignmentType] = useState<AssignmentType | ''>('')
@@ -112,7 +113,10 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
   }
 
   useEffect(() => {
-    void load().catch((err) => setError(err instanceof Error ? err.message : 'Could not load order'))
+    setLoading(true)
+    void load()
+      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load order'))
+      .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, token])
 
@@ -228,7 +232,9 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
 
   return (
     <RequireAuth roles={['admin']}>
-      {order ? (
+      {loading ? (
+        <DetailSkeleton />
+      ) : order ? (
         <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
           <section className="space-y-6">
             <div className="rounded-lg border border-ironman-navy-100 bg-white p-5 shadow-soft">
@@ -384,7 +390,18 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
           </section>
         </div>
       ) : (
-        <DetailSkeleton />
+        <div className="rounded-lg border border-ironman-navy-100 bg-white p-8 text-center shadow-soft">
+          <p className="text-base font-bold text-ironman-navy">Could not load this order</p>
+          <p className="mt-1 text-sm text-gray-600">
+            {error ?? 'The order may have been removed, or you may not have access to it.'}
+          </p>
+          <a
+            href="/admin/orders"
+            className="tap-target focus-ring mt-4 inline-flex items-center justify-center rounded-lg bg-ironman-navy px-4 py-2 text-sm font-semibold text-white"
+          >
+            Back to orders
+          </a>
+        </div>
       )}
     </RequireAuth>
   )

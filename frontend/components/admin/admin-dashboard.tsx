@@ -2,9 +2,11 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { MetricCard } from '@/components/ui/metric-card'
 import { OrderTable } from '@/components/orders/order-table'
+import { DashboardSkeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { orderToSummary } from '@/lib/mappers'
@@ -15,17 +17,37 @@ export function AdminDashboard() {
   const token = useAuthStore((state) => state.accessToken)
   const [orders, setOrders] = useState<OrderResponse[]>([])
   const [payments, setPayments] = useState<PaymentLedgerRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token) return
+    let cancelled = false
+    setLoading(true)
+    setError(null)
     Promise.all([
       apiFetch<OrderResponse[]>('/admin/orders', { token }),
       apiFetch<PaymentLedgerRow[]>('/payments', { token })
-    ]).then(([nextOrders, nextPayments]) => {
-      setOrders(nextOrders)
-      setPayments(nextPayments)
-    })
+    ])
+      .then(([nextOrders, nextPayments]) => {
+        if (cancelled) return
+        setOrders(nextOrders)
+        setPayments(nextPayments)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load dashboard')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [token])
+
+  useEffect(() => {
+    if (error) toast.error(error)
+  }, [error])
 
   const summaries = useMemo(() => orders.map(orderToSummary), [orders])
   const pendingAssignments = orders.filter((order) => ['confirmed', 'ready'].includes(order.status)).length
@@ -34,19 +56,25 @@ export function AdminDashboard() {
 
   return (
     <RequireAuth roles={['admin']}>
-      <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard label="Total orders" value={String(orders.length)} icon="PackageCheck" tone="red" />
-        <MetricCard label="Pending assignments" value={String(pendingAssignments)} icon="Truck" />
-        <MetricCard label="Revenue logged" value={formatBdt(revenue)} icon="WalletCards" tone="navy" />
-        <MetricCard label="Active deliveries" value={String(activeDeliveries)} icon="Clock3" />
-      </div>
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-bold text-ironman-navy">Live order feed</h2>
-        <Link href="/admin/orders" className="font-semibold text-ironman-red">Manage orders</Link>
-      </div>
-      <div className="mt-4">
-        <OrderTable orders={summaries} baseHref="/admin/orders" />
-      </div>
+      {loading ? (
+        <DashboardSkeleton />
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-4">
+            <MetricCard label="Total orders" value={String(orders.length)} icon="PackageCheck" tone="red" />
+            <MetricCard label="Pending assignments" value={String(pendingAssignments)} icon="Truck" />
+            <MetricCard label="Revenue logged" value={formatBdt(revenue)} icon="WalletCards" tone="navy" />
+            <MetricCard label="Active deliveries" value={String(activeDeliveries)} icon="Clock3" />
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-bold text-ironman-navy">Live order feed</h2>
+            <Link href="/admin/orders" className="font-semibold text-ironman-red">Manage orders</Link>
+          </div>
+          <div className="mt-4">
+            <OrderTable orders={summaries} baseHref="/admin/orders" />
+          </div>
+        </>
+      )}
     </RequireAuth>
   )
 }

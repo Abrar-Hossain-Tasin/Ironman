@@ -86,6 +86,8 @@ export function AdminCoupons() {
     setLoading(true)
     try {
       setCoupons(await apiFetch<CouponResponse[]>('/admin/coupons', { token }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load coupons')
     } finally {
       setLoading(false)
     }

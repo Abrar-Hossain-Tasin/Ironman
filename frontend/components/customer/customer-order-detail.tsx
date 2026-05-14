@@ -65,6 +65,7 @@ export function CustomerOrderDetail({ id }: CustomerOrderDetailProps) {
   const [order, setOrder] = useState<OrderResponse | null>(null)
   const [tracking, setTracking] = useState<TrackingEvent[]>([])
   const [payments, setPayments] = useState<PaymentLedgerRow[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const liveLocation = useOrderLiveLocation(
     order?.id,
@@ -85,7 +86,10 @@ export function CustomerOrderDetail({ id }: CustomerOrderDetailProps) {
   }
 
   useEffect(() => {
-    load().catch((err) => setError(err instanceof Error ? err.message : 'Could not load order'))
+    setLoading(true)
+    load()
+      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load order'))
+      .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, token])
 
@@ -116,7 +120,9 @@ export function CustomerOrderDetail({ id }: CustomerOrderDetailProps) {
 
   return (
     <RequireAuth roles={['customer']}>
-      {order ? (
+      {loading ? (
+        <DetailSkeleton />
+      ) : order ? (
         <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
           <section className="space-y-6">
             <div className="rounded-lg border border-ironman-navy-100 bg-white p-5 shadow-soft">
@@ -215,7 +221,18 @@ export function CustomerOrderDetail({ id }: CustomerOrderDetailProps) {
           </section>
         </div>
       ) : (
-        <DetailSkeleton />
+        <div className="rounded-lg border border-ironman-navy-100 bg-white p-8 text-center shadow-soft">
+          <p className="text-base font-bold text-ironman-navy">Could not load this order</p>
+          <p className="mt-1 text-sm text-gray-600">
+            {error ?? 'The order may have been removed, or you may not have access to it.'}
+          </p>
+          <a
+            href="/customer/orders"
+            className="tap-target focus-ring mt-4 inline-flex items-center justify-center rounded-lg bg-ironman-navy px-4 py-2 text-sm font-semibold text-white"
+          >
+            Back to my orders
+          </a>
+        </div>
       )}
     </RequireAuth>
   )

@@ -27,7 +27,9 @@ export function ReceiptPanel({ order, token }: ReceiptPanelProps) {
     setMessage(null)
     try {
       const response = await fetch(apiUrl(`/orders/${order.id}/receipt`), {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include',
+        cache: 'no-store',
+        headers: { Accept: 'application/pdf' }
       })
       if (!response.ok) throw new Error(`Could not load receipt (HTTP ${response.status})`)
       const blob = await response.blob()

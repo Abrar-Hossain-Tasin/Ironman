@@ -95,7 +95,8 @@ export function AdminStaff() {
   async function createStaff(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!token) return
-    const form = new FormData(event.currentTarget)
+    const formEl = event.currentTarget
+    const form = new FormData(formEl)
     try {
       await apiFetch<UserSummary>('/auth/admin/create-staff', {
         method: 'POST',
@@ -108,8 +109,8 @@ export function AdminStaff() {
           role: String(form.get('role') ?? 'delivery_man') as UserRole
         }
       })
+      formEl.reset()
       flashMessage('Staff account created')
-      event.currentTarget.reset()
       await load()
     } catch (err) {
       setError(err instanceof ApiError ? err.detail || err.message : err instanceof Error ? err.message : 'Could not create staff')

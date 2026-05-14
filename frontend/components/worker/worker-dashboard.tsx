@@ -6,7 +6,8 @@ import { RequireAuth } from '@/components/auth/require-auth'
 import { AssignmentCard } from '@/components/tasks/assignment-card'
 import { CompleteAssignmentPanel } from '@/components/tasks/complete-assignment-panel'
 import { WorkerBatchBar } from '@/components/worker/worker-batch-bar'
-import { apiFetch } from '@/lib/api'
+import { CardSkeleton } from '@/components/ui/skeleton'
+import { apiFetch, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { statusLabel } from '@/lib/utils'
 import type { Assignment, AssignmentType } from '@/types'
@@ -16,7 +17,9 @@ const STATION_ORDER: AssignmentType[] = ['wash', 'iron', 'dry_clean']
 export function WorkerDashboard() {
   const token = useAuthStore((state) => state.accessToken)
   const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -27,13 +30,20 @@ export function WorkerDashboard() {
   }
 
   useEffect(() => {
+    setLoading(true)
     void load()
+      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load tasks'))
+      .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
   useEffect(() => {
     if (message) toast.success(message)
   }, [message])
+
+  useEffect(() => {
+    if (error) toast.error(error)
+  }, [error])
 
   const groups = useMemo(() => {
     const grouped = new Map<AssignmentType, Assignment[]>()
@@ -83,12 +93,26 @@ export function WorkerDashboard() {
 
   async function action(assignment: Assignment, path: 'start') {
     if (!token) return
-    await apiFetch(`/worker/assignments/${assignment.id}/${path}`, {
-      method: 'PUT',
-      token
-    })
-    setMessage(`${assignment.orderNumber} started`)
-    await load()
+    try {
+      await apiFetch(`/worker/assignments/${assignment.id}/${path}`, {
+        method: 'PUT',
+        token
+      })
+      setMessage(`${assignment.orderNumber} started`)
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail || err.message : err instanceof Error ? err.message : 'Could not start task')
+    }
+  }
+
+  if (loading) {
+    return (
+      <RequireAuth roles={['wash_man', 'iron_man', 'dry_clean_man']}>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}
+        </div>
+      </RequireAuth>
+    )
   }
 
   return (

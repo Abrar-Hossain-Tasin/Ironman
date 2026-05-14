@@ -10,7 +10,7 @@ import { CompleteAssignmentPanel } from '@/components/tasks/complete-assignment-
 import { DeliveryCodReceivePanel } from '@/components/delivery/delivery-cod-receive-panel'
 import { DeliveryFailPanel } from '@/components/delivery/delivery-fail-panel'
 import { DeliveryReconcilePanel } from '@/components/delivery/delivery-reconcile-panel'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { formatBdt } from '@/lib/utils'
 import type { Assignment } from '@/types'
@@ -22,6 +22,7 @@ type DeliveryAssignmentDetailProps = {
 export function DeliveryAssignmentDetail({ id }: DeliveryAssignmentDetailProps) {
   const token = useAuthStore((state) => state.accessToken)
   const [assignment, setAssignment] = useState<Assignment | null>(null)
+  const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -32,7 +33,10 @@ export function DeliveryAssignmentDetail({ id }: DeliveryAssignmentDetailProps) 
   }
 
   useEffect(() => {
-    void load().catch((err) => setError(err instanceof Error ? err.message : 'Could not load assignment'))
+    setLoading(true)
+    void load()
+      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load assignment'))
+      .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, token])
 
@@ -47,32 +51,41 @@ export function DeliveryAssignmentDetail({ id }: DeliveryAssignmentDetailProps) 
   async function recordCash(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!token || !assignment) return
-    const form = new FormData(event.currentTarget)
-    await apiFetch('/delivery/payments', {
-      method: 'POST',
-      token,
-      body: {
-        orderId: assignment.orderId,
-        amount: Number(form.get('amount') ?? 0),
-        paymentType: assignment.assignmentType === 'pickup' ? 'cod_pickup' : 'cod_delivery',
-        payerPhone: String(form.get('payerPhone') ?? ''),
-        paymentReference: String(form.get('paymentReference') ?? ''),
-        notes: String(form.get('notes') ?? '')
-      }
-    })
-    setMessage('Cash received and order paid amount updated')
-    event.currentTarget.reset()
-    await load()
+    const formEl = event.currentTarget
+    const form = new FormData(formEl)
+    try {
+      await apiFetch('/delivery/payments', {
+        method: 'POST',
+        token,
+        body: {
+          orderId: assignment.orderId,
+          amount: Number(form.get('amount') ?? 0),
+          paymentType: assignment.assignmentType === 'pickup' ? 'cod_pickup' : 'cod_delivery',
+          payerPhone: String(form.get('payerPhone') ?? ''),
+          paymentReference: String(form.get('paymentReference') ?? ''),
+          notes: String(form.get('notes') ?? '')
+        }
+      })
+      formEl.reset()
+      setMessage('Cash received and order paid amount updated')
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail || err.message : err instanceof Error ? err.message : 'Could not record cash')
+    }
   }
 
   async function action(nextAssignment: Assignment, path: 'accept' | 'start') {
     if (!token) return
-    await apiFetch(`/delivery/assignments/${nextAssignment.id}/${path}`, {
-      method: 'PUT',
-      token
-    })
-    setMessage(`${nextAssignment.orderNumber} ${path}`)
-    await load()
+    try {
+      await apiFetch(`/delivery/assignments/${nextAssignment.id}/${path}`, {
+        method: 'PUT',
+        token
+      })
+      setMessage(`${nextAssignment.orderNumber} ${path}`)
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail || err.message : err instanceof Error ? err.message : `Could not ${path} assignment`)
+    }
   }
 
   function focusCompletePanel() {
@@ -85,7 +98,9 @@ export function DeliveryAssignmentDetail({ id }: DeliveryAssignmentDetailProps) 
 
   return (
     <RequireAuth roles={['delivery_man']}>
-      {assignment ? (
+      {loading ? (
+        <DetailSkeleton />
+      ) : assignment ? (
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-4">
             <AssignmentCard
@@ -187,7 +202,18 @@ export function DeliveryAssignmentDetail({ id }: DeliveryAssignmentDetailProps) 
           </aside>
         </div>
       ) : (
-        <DetailSkeleton />
+        <div className="rounded-lg border border-ironman-navy-100 bg-white p-8 text-center shadow-soft">
+          <p className="text-base font-bold text-ironman-navy">Assignment not found</p>
+          <p className="mt-1 text-sm text-gray-600">
+            This task may have been reassigned or already completed. Head back to your dashboard for current work.
+          </p>
+          <a
+            href="/delivery/dashboard"
+            className="tap-target focus-ring mt-4 inline-flex items-center justify-center rounded-lg bg-ironman-navy px-4 py-2 text-sm font-semibold text-white"
+          >
+            Back to dashboard
+          </a>
+        </div>
       )}
     </RequireAuth>
   )

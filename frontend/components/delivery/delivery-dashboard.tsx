@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { DeliveryEarningsCard } from '@/components/delivery/delivery-earnings-card'
 import { AssignmentCard } from '@/components/tasks/assignment-card'
-import { apiFetch } from '@/lib/api'
+import { CardSkeleton } from '@/components/ui/skeleton'
+import { apiFetch, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import type { Assignment } from '@/types'
 
@@ -13,7 +15,9 @@ export function DeliveryDashboard() {
   const router = useRouter()
   const token = useAuthStore((state) => state.accessToken)
   const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [isTracking, setIsTracking] = useState(false)
   const [trackingMessage, setTrackingMessage] = useState<string | null>(null)
 
@@ -24,9 +28,16 @@ export function DeliveryDashboard() {
   }
 
   useEffect(() => {
+    setLoading(true)
     void load()
+      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load assignments'))
+      .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
+
+  useEffect(() => {
+    if (error) toast.error(error)
+  }, [error])
 
   useEffect(() => {
     const activeTask = assignments.find(
@@ -101,12 +112,16 @@ export function DeliveryDashboard() {
 
   async function action(assignment: Assignment, path: 'accept' | 'start') {
     if (!token) return
-    await apiFetch(`/delivery/assignments/${assignment.id}/${path}`, {
-      method: 'PUT',
-      token
-    })
-    setMessage(`${assignment.orderNumber} ${path}`)
-    await load()
+    try {
+      await apiFetch(`/delivery/assignments/${assignment.id}/${path}`, {
+        method: 'PUT',
+        token
+      })
+      setMessage(`${assignment.orderNumber} ${path}`)
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail || err.message : err instanceof Error ? err.message : `Could not ${path} assignment`)
+    }
   }
 
   // Bumped after an assignment action completes so the earnings card re-fetches.
@@ -114,6 +129,16 @@ export function DeliveryDashboard() {
   // both happen on the same dashboard, so refreshing on any state change keeps
   // the number honest with minimal complexity.
   const earningsRefreshKey = assignments.length + (message ? 1 : 0)
+
+  if (loading) {
+    return (
+      <RequireAuth roles={['delivery_man']}>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}
+        </div>
+      </RequireAuth>
+    )
+  }
 
   return (
     <RequireAuth roles={['delivery_man']}>
