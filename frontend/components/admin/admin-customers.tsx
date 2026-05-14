@@ -88,8 +88,8 @@ export function AdminCustomers() {
         </p>
       ) : (
         <>
-          <div className="overflow-hidden rounded-lg border border-ironman-navy-100 bg-white shadow-soft">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-lg border border-ironman-navy-100 bg-white shadow-soft">
+            <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-ironman-navy-50 text-left text-xs uppercase text-gray-600">
                 <tr>
                   <th className="px-3 py-2">Customer</th>
