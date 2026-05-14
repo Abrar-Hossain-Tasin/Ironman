@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CalendarClock, Loader2 } from 'lucide-react'
 import { apiFetch, ApiError } from '@/lib/api'
 import { isoDate } from '@/lib/utils'
-import type { OrderResponse, OrderStatus } from '@/types'
+import type { OrderResponse, OrderStatus, SlotAvailabilityResponse, SlotRow } from '@/types'
 
 const reschedulableStatuses: OrderStatus[] = [
   'pending',
@@ -12,7 +12,27 @@ const reschedulableStatuses: OrderStatus[] = [
   'pickup_assigned'
 ]
 
-const slots = ['10:00-12:00', '14:00-18:00', '18:00-20:00']
+// Only used if the slot-capacity API is unreachable, so the panel never locks up.
+const FALLBACK_SLOTS = ['10:00-12:00', '14:00-18:00', '18:00-20:00']
+
+function SlotOptions({ rows, current }: { rows: SlotRow[] | undefined; current: string }) {
+  if (!rows || rows.length === 0) {
+    const base = !current || FALLBACK_SLOTS.includes(current) ? FALLBACK_SLOTS : [current, ...FALLBACK_SLOTS]
+    return <>{base.map((s) => <option key={s} value={s}>{s}</option>)}</>
+  }
+  const hasCurrent = rows.some((row) => row.slot === current)
+  return (
+    <>
+      {!hasCurrent && current ? <option value={current}>{current} (current)</option> : null}
+      {rows.map((row) => (
+        <option key={row.slot} value={row.slot} disabled={row.full && row.slot !== current}>
+          {row.slot}
+          {row.full ? ' — Full' : row.remaining <= 3 ? ` — Only ${row.remaining} left` : ''}
+        </option>
+      ))}
+    </>
+  )
+}
 
 type OrderReschedulePanelProps = {
   order: OrderResponse
@@ -31,6 +51,45 @@ export function OrderReschedulePanel({ order, token, onRescheduled }: OrderResch
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [pickupSlots, setPickupSlots] = useState<SlotAvailabilityResponse | null>(null)
+  const [deliverySlots, setDeliverySlots] = useState<SlotAvailabilityResponse | null>(null)
+  const [slotsError, setSlotsError] = useState<string | null>(null)
+
+  // Pull live slot capacity once the panel is expanded so customers can't
+  // reschedule into a full slot. Refetches whenever the chosen date changes.
+  useEffect(() => {
+    if (!open || !token || !pickupDate) return
+    let cancelled = false
+    apiFetch<SlotAvailabilityResponse>(`/services/slots?date=${pickupDate}`, { token })
+      .then((res) => {
+        if (cancelled) return
+        setPickupSlots(res)
+        setSlotsError(null)
+      })
+      .catch((err) => {
+        if (!cancelled) setSlotsError(err instanceof Error ? err.message : 'Could not load slot availability')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, token, pickupDate])
+
+  useEffect(() => {
+    if (!open || !token || !deliveryDate) return
+    let cancelled = false
+    apiFetch<SlotAvailabilityResponse>(`/services/slots?date=${deliveryDate}`, { token })
+      .then((res) => {
+        if (cancelled) return
+        setDeliverySlots(res)
+        setSlotsError(null)
+      })
+      .catch((err) => {
+        if (!cancelled) setSlotsError(err instanceof Error ? err.message : 'Could not load slot availability')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, token, deliveryDate])
 
   async function submit() {
     if (!token) return
@@ -118,7 +177,7 @@ export function OrderReschedulePanel({ order, token, onRescheduled }: OrderResch
           <label>
             <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Pickup slot</span>
             <select className="tap-target mt-1 w-full rounded-lg border border-ironman-navy-100 bg-ironman-navy-50 px-3 py-2 focus-ring" value={pickupSlot} onChange={(e) => setPickupSlot(e.target.value)}>
-              {slots.map((s) => <option key={s} value={s}>{s}</option>)}
+              <SlotOptions rows={pickupSlots?.pickup} current={pickupSlot} />
             </select>
           </label>
           <label>
@@ -128,13 +187,18 @@ export function OrderReschedulePanel({ order, token, onRescheduled }: OrderResch
           <label>
             <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Delivery slot</span>
             <select className="tap-target mt-1 w-full rounded-lg border border-ironman-navy-100 bg-ironman-navy-50 px-3 py-2 focus-ring" value={deliverySlot} onChange={(e) => setDeliverySlot(e.target.value)}>
-              {slots.map((s) => <option key={s} value={s}>{s}</option>)}
+              <SlotOptions rows={deliverySlots?.delivery} current={deliverySlot} />
             </select>
           </label>
           <label className="md:col-span-2">
             <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Reason (optional)</span>
             <textarea className="mt-1 min-h-20 w-full rounded-lg border border-ironman-navy-100 bg-ironman-navy-50 px-3 py-2 focus-ring" value={reason} onChange={(e) => setReason(e.target.value)} />
           </label>
+          {slotsError ? (
+            <p className="md:col-span-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+              {slotsError} — showing standard time slots.
+            </p>
+          ) : null}
           {error ? <p className="md:col-span-2 rounded-lg bg-ironman-red-50 px-3 py-2 text-sm font-semibold text-ironman-red">{error}</p> : null}
           <div className="md:col-span-2 flex justify-end">
             <button

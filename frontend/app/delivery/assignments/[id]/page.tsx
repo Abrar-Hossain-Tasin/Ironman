@@ -3,7 +3,7 @@ import { PortalShell } from '@/components/layout/portal-shell'
 
 const nav = [
   { href: '/delivery/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-  { href: '/delivery/dashboard', label: 'Assignments', icon: 'Truck' }
+  { href: '/delivery/assignments', label: 'Assignments', icon: 'Truck' }
 ]
 
 export default async function DeliveryAssignmentDetailPage({ params }: { params: Promise<{ id: string }> }) {

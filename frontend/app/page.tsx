@@ -432,7 +432,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Live stats glass card – bottom right */}
+          {/* Process steps glass card – bottom right */}
           <div className="absolute bottom-8 right-8 z-20 hidden lg:block">
             <div className="rounded-2xl p-5 w-56"
               style={{
@@ -443,18 +443,18 @@ export default function HomePage() {
                 boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
               }}
             >
-              <p className="font-body text-[10px] font-semibold uppercase tracking-widest text-ironman-red mb-3">Live Today</p>
+              <p className="font-body text-[10px] font-semibold uppercase tracking-widest text-ironman-red mb-3">How It Works</p>
               {[
-                { label: 'Pickup Assigned', value: '18', color: '#3B82F6' },
-                { label: 'In Processing', value: '9', color: '#F97316' },
-                { label: 'Ready for Delivery', value: '6', color: '#22C55E' }
-              ].map(({ label, value, color }) => (
+                { label: 'Pickup Assigned', step: '1', color: '#3B82F6' },
+                { label: 'In Processing', step: '2', color: '#F97316' },
+                { label: 'Ready for Delivery', step: '3', color: '#22C55E' }
+              ].map(({ label, step, color }) => (
                 <div key={label} className="flex items-center justify-between py-2 border-b border-white/8 last:border-0">
                   <div className="flex items-center gap-2">
                     <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }} />
                     <span className="font-body text-xs text-white/70">{label}</span>
                   </div>
-                  <span className="font-display text-lg font-bold text-white">{value}</span>
+                  <span className="font-display text-lg font-bold text-white">{step}</span>
                 </div>
               ))}
             </div>

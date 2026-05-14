@@ -3,7 +3,7 @@ import { PortalShell } from '@/components/layout/portal-shell'
 
 const nav = [
   { href: '/delivery/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-  { href: '/delivery/assignments', label: 'Assignments', icon: 'Truck' } // Change this href
+  { href: '/delivery/assignments', label: 'Assignments', icon: 'Truck' }
 ]
 
 export default function DeliveryDashboardPage() {

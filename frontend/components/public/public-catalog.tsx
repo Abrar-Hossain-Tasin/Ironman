@@ -41,8 +41,20 @@ export function PublicCatalog({ mode }: PublicCatalogProps) {
     void load()
   }, [])
 
+  const [clothingFilter, setClothingFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+
   const decoratedCategories = useMemo(() => decorateCategories(categories, pricing), [categories, pricing])
   const decoratedClothingTypes = useMemo(() => decorateClothingTypes(clothingTypes), [clothingTypes])
+
+  const visibleClothingTypes = useMemo(
+    () => (clothingFilter ? decoratedClothingTypes.filter((item) => item.id === clothingFilter) : decoratedClothingTypes),
+    [decoratedClothingTypes, clothingFilter]
+  )
+  const visibleCategories = useMemo(
+    () => (categoryFilter ? decoratedCategories.filter((item) => item.id === categoryFilter) : decoratedCategories),
+    [decoratedCategories, categoryFilter]
+  )
 
   if (loading) {
     return mode === 'home' ? (
@@ -62,17 +74,33 @@ export function PublicCatalog({ mode }: PublicCatalogProps) {
     return (
       <>
         <div className="mt-5 grid gap-3 md:grid-cols-2">
-          <select className="tap-target rounded-lg border border-ironman-navy-100 bg-white px-3 py-2 focus-ring" defaultValue="">
+          <select
+            className="tap-target rounded-lg border border-ironman-navy-100 bg-white px-3 py-2 focus-ring"
+            value={clothingFilter}
+            onChange={(event) => setClothingFilter(event.target.value)}
+            aria-label="Filter by clothing type"
+          >
             <option value="">All clothing types</option>
-            {decoratedClothingTypes.map((item) => <option key={item.id}>{item.name}</option>)}
+            {decoratedClothingTypes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
-          <select className="tap-target rounded-lg border border-ironman-navy-100 bg-white px-3 py-2 focus-ring" defaultValue="">
+          <select
+            className="tap-target rounded-lg border border-ironman-navy-100 bg-white px-3 py-2 focus-ring"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            aria-label="Filter by service category"
+          >
             <option value="">All service categories</option>
-            {decoratedCategories.map((item) => <option key={item.id}>{item.name}</option>)}
+            {decoratedCategories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </div>
         <div className="mt-8">
-          <PricingTable categories={decoratedCategories} clothingTypes={decoratedClothingTypes} pricing={pricing} />
+          {visibleClothingTypes.length === 0 || visibleCategories.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-ironman-navy-100 bg-white p-6 text-center text-sm text-gray-600">
+              No pricing matches the selected filters.
+            </p>
+          ) : (
+            <PricingTable categories={visibleCategories} clothingTypes={visibleClothingTypes} pricing={pricing} />
+          )}
         </div>
       </>
     )
