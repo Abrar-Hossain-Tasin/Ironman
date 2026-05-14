@@ -1,0 +1,13 @@
+target/
+.mvn/wrapper/maven-wrapper.jar
+node_modules/
+.next/
+out/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+coverage/
+.DS_Store
+Thumbs.db

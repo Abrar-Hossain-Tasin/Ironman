@@ -1,0 +1,1 @@
+-- Delivery charge feature removed. No schema changes.
