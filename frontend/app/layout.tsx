@@ -44,8 +44,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <meta name="theme-color" content="#D81B2A" />
       </head>
       <body className="font-body antialiased">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-ironman-navy focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+        >
+          Skip to content
+        </a>
         <AppProviders locale={locale} messages={messages}>
-          {children}
+          <div id="main-content">{children}</div>
         </AppProviders>
         <Analytics />
         <SpeedInsights />

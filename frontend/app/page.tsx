@@ -294,31 +294,28 @@ function TestimonialCard({ t }: { t: typeof testimonials[0] }) {
 export default function HomePage() {
   const [activeSlide, setActiveSlide] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Bumped on every manual navigation to restart the autoplay timer — otherwise
+  // clicking an arrow once would kill autoplay for the rest of the session.
+  const [autoplayKey, setAutoplayKey] = useState(0)
   const marqueeRef = useRef<HTMLDivElement>(null)
 
   const goToSlide = useCallback((index: number) => {
     if (isTransitioning) return
     setIsTransitioning(true)
     setActiveSlide(index)
+    setAutoplayKey((key) => key + 1)
     setTimeout(() => setIsTransitioning(false), 1200)
   }, [isTransitioning])
 
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
+    const id = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % heroSlides.length)
     }, 6000)
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [])
+    return () => clearInterval(id)
+  }, [autoplayKey])
 
-  const prevSlide = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current)
-    goToSlide((activeSlide - 1 + heroSlides.length) % heroSlides.length)
-  }
-  const nextSlide = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current)
-    goToSlide((activeSlide + 1) % heroSlides.length)
-  }
+  const prevSlide = () => goToSlide((activeSlide - 1 + heroSlides.length) % heroSlides.length)
+  const nextSlide = () => goToSlide((activeSlide + 1) % heroSlides.length)
 
   // Duplicate testimonials for seamless marquee
   const allTestimonials = [...testimonials, ...testimonials]

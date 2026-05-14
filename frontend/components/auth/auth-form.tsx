@@ -1,10 +1,11 @@
 'use client'
 
-import { FormEvent, useState, useId } from 'react'
+import { ChangeEvent, FormEvent, ReactNode, useState, useId } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiFetch, ApiError } from '@/lib/api'
 import { roleHome, useAuthStore } from '@/lib/auth-store'
@@ -30,6 +31,24 @@ function passwordStrength(password: string): { score: 0 | 1 | 2 | 3 | 4; label: 
 }
 
 // ─── Reusable Animated Input ───────────────────────────────────────────────
+type FloatingInputProps = {
+  name: string
+  label: string
+  type?: string
+  icon: LucideIcon
+  required?: boolean
+  minLength?: number
+  delay?: number
+  shake?: boolean
+  value?: string
+  onChange?: (event: ChangeEvent<HTMLInputElement>) => void
+  trailing?: ReactNode
+  inputType?: string
+  autoComplete?: string
+  inputMode?: 'text' | 'tel' | 'email' | 'numeric' | 'search' | 'url' | 'none' | 'decimal'
+  pattern?: string
+}
+
 function FloatingInput({
   name,
   label,
@@ -46,7 +65,7 @@ function FloatingInput({
   autoComplete,
   inputMode,
   pattern
-}: any) {
+}: FloatingInputProps) {
   const [focused, setFocused] = useState(false)
   const [internal, setInternal] = useState('')
   const isControlled = value !== undefined
@@ -191,7 +210,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
               autoComplete="tel"
               inputMode="tel"
               value={phone}
-              onChange={(e: any) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(e.target.value)}
             />
           </div>
         )}
@@ -218,7 +237,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
         delay={0.25}
         shake={!!error}
         value={password}
-        onChange={(e: any) => setPassword(e.target.value)}
+        onChange={(e) => setPassword(e.target.value)}
         autoComplete={isLogin ? 'current-password' : 'new-password'}
         trailing={
           <button

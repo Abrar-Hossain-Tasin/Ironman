@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { MapPin, Crosshair, Search } from 'lucide-react'
+import type { Icon, LeafletEvent, Marker as LeafletMarker } from 'leaflet'
 
 // Leaflet is client-only.
 const MapContainer = dynamic(() => import('react-leaflet').then((m) => m.MapContainer), { ssr: false })
@@ -24,11 +25,9 @@ type AddressMapPickerProps = {
   height?: number
 }
 
-type DragEndEvent = { target: { getLatLng: () => { lat: number; lng: number } } }
-
 export function AddressMapPicker({ value, onChange, height = 280 }: AddressMapPickerProps) {
   const [iconReady, setIconReady] = useState(false)
-  const iconRef = useRef<any>(null)
+  const iconRef = useRef<Icon | null>(null)
   const [locating, setLocating] = useState(false)
   const [searching, setSearching] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -110,8 +109,8 @@ export function AddressMapPicker({ value, onChange, height = 280 }: AddressMapPi
     }
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { lat, lng } = event.target.getLatLng()
+  const handleDragEnd = (event: LeafletEvent) => {
+    const { lat, lng } = (event.target as LeafletMarker).getLatLng()
     onChange({
       latitude: Number(lat.toFixed(6)),
       longitude: Number(lng.toFixed(6)),
@@ -164,8 +163,8 @@ export function AddressMapPicker({ value, onChange, height = 280 }: AddressMapPi
             <Marker
               position={position}
               draggable
-              icon={iconRef.current}
-              eventHandlers={{ dragend: handleDragEnd as any }}
+              icon={iconRef.current ?? undefined}
+              eventHandlers={{ dragend: handleDragEnd }}
             />
           </MapContainer>
         ) : (

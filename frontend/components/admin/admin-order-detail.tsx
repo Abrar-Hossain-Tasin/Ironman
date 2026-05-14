@@ -84,6 +84,7 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
   const [payments, setPayments] = useState<PaymentLedgerRow[]>([])
   const [staff, setStaff] = useState<UserSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const [confirming, setConfirming] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [assignmentType, setAssignmentType] = useState<AssignmentType | ''>('')
@@ -154,6 +155,7 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
 
   async function confirmOrder() {
     if (!token || !order) return
+    setConfirming(true)
     try {
       await apiFetch(`/admin/orders/${id}/status`, {
         method: 'PUT',
@@ -164,6 +166,8 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
       await load()
     } catch (err) {
       setError(err instanceof ApiError ? err.detail || err.message : 'Failed to confirm order.')
+    } finally {
+      setConfirming(false)
     }
   }
 
@@ -252,10 +256,12 @@ export function AdminOrderDetail({ id }: AdminOrderDetailProps) {
 
             {order.status === 'pending' && (
               <button
+                type="button"
                 onClick={confirmOrder}
-                className="w-full rounded-xl bg-emerald-600 py-4 font-bold text-white shadow-lg transition-all hover:bg-emerald-700 active:scale-95"
+                disabled={confirming}
+                className="w-full rounded-xl bg-emerald-600 py-4 font-bold text-white shadow-lg transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-60 disabled:active:scale-100"
               >
-                Confirm order & notify customer
+                {confirming ? 'Confirming…' : 'Confirm order & notify customer'}
               </button>
             )}
 

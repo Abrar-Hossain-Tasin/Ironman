@@ -7,6 +7,19 @@ import { getSupabaseClient } from '@/lib/supabase'
 import { TrackingTimeline } from '@/components/ui/tracking-timeline'
 import type { TrackingEvent } from '@/types'
 
+// Shape of an order_tracking row as delivered by Supabase realtime (snake_case).
+type OrderTrackingRow = {
+  id: string
+  order_id: string
+  status: string
+  status_label: string
+  description: string | null
+  updated_by: string | null
+  location_lat: number | null
+  location_lng: number | null
+  timestamp: string
+}
+
 export function PublicTracker() {
   const [orderNumber, setOrderNumber] = useState('')
   const [events, setEvents] = useState<TrackingEvent[]>([])
@@ -52,18 +65,25 @@ export function PublicTracker() {
           filter: `order_id=eq.${orderId}`
         },
         (payload) => {
-          const next = payload.new as Record<string, string>
-          setEvents((current) => [
-            ...current,
-            {
-              id: next.id,
-              status: next.status as TrackingEvent['status'],
-              statusLabel: next.status_label,
-              description: next.description,
-              updatedByName: 'Live update',
-              timestamp: next.timestamp
-            }
-          ])
+          const row = payload.new as OrderTrackingRow
+          setEvents((current) => {
+            if (current.some((event) => event.id === row.id)) return current
+            return [
+              ...current,
+              {
+                id: row.id,
+                orderId: row.order_id,
+                status: row.status as TrackingEvent['status'],
+                statusLabel: row.status_label,
+                description: row.description ?? '',
+                updatedBy: row.updated_by,
+                updatedByName: 'Live update',
+                locationLat: row.location_lat,
+                locationLng: row.location_lng,
+                timestamp: row.timestamp
+              }
+            ]
+          })
         }
       )
       .subscribe()
@@ -79,17 +99,23 @@ export function PublicTracker() {
         <h1 className="text-2xl font-bold text-ironman-navy">Track Order</h1>
         <label className="mt-5 block">
           <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Order number</span>
-          <div className="mt-2 flex gap-2">
+          <form
+            className="mt-2 flex gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void search()
+            }}
+          >
             <input
               value={orderNumber}
               onChange={(event) => setOrderNumber(event.target.value)}
               className="tap-target min-w-0 flex-1 rounded-lg border border-ironman-navy-100 bg-ironman-navy-50 px-3 py-2 focus-ring"
               placeholder="IRM-20240501-0042"
             />
-            <button className="tap-target focus-ring inline-flex items-center justify-center rounded-lg bg-ironman-red px-4 text-white disabled:opacity-70" type="button" aria-label="Search order" disabled={loading} onClick={search}>
+            <button className="tap-target focus-ring inline-flex items-center justify-center rounded-lg bg-ironman-red px-4 text-white disabled:opacity-70" type="submit" aria-label="Search order" disabled={loading}>
               <Search className="h-5 w-5" aria-hidden />
             </button>
-          </div>
+          </form>
         </label>
         {error ? <p className="mt-4 rounded-lg bg-ironman-red-50 px-3 py-2 text-sm font-semibold text-ironman-red">{error}</p> : null}
         {orderNumber ? (
