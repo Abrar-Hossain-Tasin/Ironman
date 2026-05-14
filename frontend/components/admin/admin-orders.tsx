@@ -8,6 +8,7 @@ import { OrderTable } from '@/components/orders/order-table'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
+import { downloadCsv } from '@/lib/csv'
 import { orderToSummary } from '@/lib/mappers'
 import { formatBdt, statusLabel } from '@/lib/utils'
 import type { OrderResponse, OrderStatus } from '@/types'
@@ -44,52 +45,22 @@ function within(order: OrderResponse, from: string, to: string) {
   return true
 }
 
-function csvEscape(value: string | number | null | undefined) {
-  const s = value == null ? '' : String(value)
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-    return `"${s.replace(/"/g, '""')}"`
-  }
-  return s
-}
-
-function downloadCsv(rows: OrderResponse[]) {
-  const header = [
-    'orderNumber',
-    'customer',
-    'phone',
-    'status',
-    'paymentMethod',
-    'paymentStatus',
-    'totalAmount',
-    'paidAmount',
-    'createdAt'
-  ].join(',')
-  const body = rows
-    .map((order) =>
-      [
-        order.orderNumber,
-        order.customer.fullName,
-        order.customer.phone,
-        order.status,
-        order.paymentMethod,
-        order.paymentStatus,
-        order.totalAmount,
-        order.paidAmount,
-        order.createdAt
-      ]
-        .map(csvEscape)
-        .join(',')
-    )
-    .join('\n')
-  const blob = new Blob([`${header}\n${body}`], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `ironman-orders-${new Date().toISOString().slice(0, 10)}.csv`
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
+function exportOrdersCsv(rows: OrderResponse[]) {
+  downloadCsv(
+    `ironman-orders-${new Date().toISOString().slice(0, 10)}.csv`,
+    ['orderNumber', 'customer', 'phone', 'status', 'paymentMethod', 'paymentStatus', 'totalAmount', 'paidAmount', 'createdAt'],
+    rows.map((order) => [
+      order.orderNumber,
+      order.customer.fullName,
+      order.customer.phone,
+      order.status,
+      order.paymentMethod,
+      order.paymentStatus,
+      order.totalAmount,
+      order.paidAmount,
+      order.createdAt
+    ])
+  )
 }
 
 export function AdminOrders() {
@@ -214,7 +185,7 @@ export function AdminOrders() {
           </button>
           <button
             type="button"
-            onClick={() => downloadCsv(filtered)}
+            onClick={() => exportOrdersCsv(filtered)}
             disabled={filtered.length === 0}
             className="tap-target inline-flex items-center gap-1 rounded-lg bg-ironman-navy px-3 py-1.5 font-semibold text-white disabled:opacity-50"
           >

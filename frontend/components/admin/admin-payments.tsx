@@ -9,6 +9,7 @@ import { TableSkeleton } from '@/components/ui/skeleton'
 import { PaymentLedger } from '@/components/payments/payment-ledger'
 import { apiFetch } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
+import { downloadCsv } from '@/lib/csv'
 import { formatBdt, statusLabel } from '@/lib/utils'
 import type {
   PaymentAuditEventRow,
@@ -39,54 +40,34 @@ function inRange(iso: string, from: string, to: string) {
   return true
 }
 
-function csvEscape(value: string | number | null | undefined) {
-  const s = value == null ? '' : String(value)
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-    return `"${s.replace(/"/g, '""')}"`
-  }
-  return s
-}
-
-function downloadCsv(rows: PaymentLedgerRow[]) {
-  const header = [
-    'collectedAt',
-    'orderNumber',
-    'amount',
-    'paymentType',
-    'collector',
-    'payerPhone',
-    'paymentReference',
-    'verified',
-    'appliedToBalance',
-    'verifiedAt'
-  ].join(',')
-  const body = rows
-    .map((row) =>
-      [
-        row.collectedAt,
-        row.orderNumber,
-        row.amount,
-        row.paymentType,
-        row.collectedByName ?? '',
-        row.payerPhone ?? '',
-        row.paymentReference ?? '',
-        row.verified ? 'yes' : 'no',
-        row.appliedToBalance ? 'yes' : 'no',
-        row.verifiedAt ?? ''
-      ]
-        .map(csvEscape)
-        .join(',')
-    )
-    .join('\n')
-  const blob = new Blob([`${header}\n${body}`], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `ironman-payments-${new Date().toISOString().slice(0, 10)}.csv`
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
+function exportPaymentsCsv(rows: PaymentLedgerRow[]) {
+  downloadCsv(
+    `ironman-payments-${new Date().toISOString().slice(0, 10)}.csv`,
+    [
+      'collectedAt',
+      'orderNumber',
+      'amount',
+      'paymentType',
+      'collector',
+      'payerPhone',
+      'paymentReference',
+      'verified',
+      'appliedToBalance',
+      'verifiedAt'
+    ],
+    rows.map((row) => [
+      row.collectedAt,
+      row.orderNumber,
+      row.amount,
+      row.paymentType,
+      row.collectedByName ?? '',
+      row.payerPhone ?? '',
+      row.paymentReference ?? '',
+      row.verified ? 'yes' : 'no',
+      row.appliedToBalance ? 'yes' : 'no',
+      row.verifiedAt ?? ''
+    ])
+  )
 }
 
 export function AdminPayments() {
@@ -263,7 +244,7 @@ export function AdminPayments() {
           </button>
           <button
             type="button"
-            onClick={() => downloadCsv(filtered)}
+            onClick={() => exportPaymentsCsv(filtered)}
             disabled={filtered.length === 0}
             className="tap-target inline-flex items-center gap-1 rounded-lg bg-ironman-navy px-3 py-1.5 font-semibold text-white disabled:opacity-50"
           >

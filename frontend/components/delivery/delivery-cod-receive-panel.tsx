@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { CheckCircle2, HandCoins, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PanelSkeleton } from '@/components/ui/skeleton'
+import { HandshakeRow } from '@/components/ui/handshake-row'
 import { apiFetch, ApiError } from '@/lib/api'
 import { getSupabaseClient } from '@/lib/supabase'
 import type { Assignment, CodPaymentStatusResponse, PaymentMethod } from '@/types'
@@ -157,27 +158,5 @@ export function DeliveryCodReceivePanel({ assignment, token, onConfirmed }: Deli
         </button>
       ) : null}
     </section>
-  )
-}
-
-function HandshakeRow({ label, done, subtitle }: { label: string; done: boolean; subtitle: string }) {
-  return (
-    <div
-      className={`flex items-start gap-3 rounded-lg border p-3 ${
-        done ? 'border-emerald-200 bg-emerald-50' : 'border-ironman-navy-100 bg-ironman-navy-50'
-      }`}
-    >
-      <span
-        className={`mt-0.5 grid h-6 w-6 place-items-center rounded-full text-white ${
-          done ? 'bg-emerald-500' : 'bg-gray-300'
-        }`}
-      >
-        <CheckCircle2 className="h-4 w-4" aria-hidden />
-      </span>
-      <div>
-        <p className="text-sm font-semibold text-ironman-navy">{label}</p>
-        <p className="text-xs text-gray-600">{subtitle}</p>
-      </div>
-    </div>
   )
 }
