@@ -12,7 +12,7 @@ create table if not exists public.payment_webhook_events (
   provider varchar(32) not null,
   event_id varchar(160),
   idempotency_key varchar(200) not null,
-  payload_sha256 char(64) not null,
+  payload_sha256 varchar(64) not null,
   signature_header text,
   request_headers text,
   raw_payload text not null,
