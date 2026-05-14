@@ -1,0 +1,14 @@
+{
+  "language": {
+    "english": "English",
+    "bangla": "বাংলা",
+    "switchTo": "{locale} ভাষায় দেখুন"
+  },
+  "common": {
+    "login": "লগইন",
+    "getStarted": "শুরু করুন",
+    "home": "হোম",
+    "pricing": "প্রাইসিং",
+    "trackOrder": "অর্ডার ট্র্যাক করুন"
+  }
+}

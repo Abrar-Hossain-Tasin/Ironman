@@ -1,0 +1,18 @@
+{
+  "name": "IRONMAN Laundry",
+  "short_name": "IRONMAN",
+  "description": "Customer, delivery, and staff portal for IRONMAN Laundry.",
+  "start_url": "/delivery/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#D81B2A",
+  "icons": [
+    {
+      "src": "/Ironman-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "language": {
+    "english": "English",
+    "bangla": "Bangla",
+    "switchTo": "Switch to {locale}"
+  },
+  "common": {
+    "login": "Login",
+    "getStarted": "Get Started",
+    "home": "Home",
+    "pricing": "Pricing",
+    "trackOrder": "Track Order"
+  }
+}

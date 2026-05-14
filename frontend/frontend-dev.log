@@ -1,0 +1,15 @@
+
+> ironman-frontend@0.1.0 dev
+> next dev --port 3000
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1921ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.9s (783 modules)
+ GET / 200 in 3080ms
+ GET / 200 in 64ms
+ ✓ Compiled in 37ms

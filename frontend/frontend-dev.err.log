@@ -1,0 +1,54 @@
+IntlError: ENVIRONMENT_FALLBACK: There is no `timeZone` configured, this can lead to markup mismatches caused by environment differences. Consider adding a global default: https://next-intl.dev/docs/configuration#time-zone
+    at useTranslationsImpl (webpack-internal:///(ssr)/./node_modules/use-intl/dist/esm/development/react.js:101:13)
+    at useTranslations (webpack-internal:///(ssr)/./node_modules/use-intl/dist/esm/development/react.js:133:10)
+    at eval (webpack-internal:///(ssr)/./node_modules/next-intl/dist/esm/development/react-client/index.js:24:14)
+    at SiteHeader (webpack-internal:///(ssr)/./components/layout/site-header.tsx:28:73)
+    at au (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:10446)
+    at C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:15122
+    at aw (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at aj (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:53793)
+    at aC (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:52874)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:50095)
+    at aw (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:42922)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at aw (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:46505)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at aj (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:53793)
+    at aC (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:52874)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:50095)
+    at aj (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:53793)
+    at aC (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:52874)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:50095)
+    at aw (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:45321)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ac (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11400)
+    at aw (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:14707)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ac (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11400)
+    at aw (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:14707)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at ab (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:11808)
+    at C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16871
+    at aw (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:16908)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776)
+    at aw (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:42922)
+    at a_ (C:\Users\abrar\Documents\New project\ironman\frontend\node_modules\next\dist\compiled\next-server\app-page.runtime.dev.js:35:49776) {
+  code: 'ENVIRONMENT_FALLBACK',
+  originalMessage: 'There is no `timeZone` configured, this can lead to markup mismatches caused by environment differences. Consider adding a global default: https://next-intl.dev/docs/configuration#time-zone'
+}
