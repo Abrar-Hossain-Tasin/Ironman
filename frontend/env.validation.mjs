@@ -11,15 +11,26 @@ const REQUIRED_PRODUCTION_ENV = [
   { key: 'NEXT_PUBLIC_SUPABASE_URL', label: 'Supabase project URL', type: 'url', allowLocalhost: false },
   { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', label: 'Supabase anon key' },
   { key: 'NEXT_PUBLIC_BKASH_MERCHANT_NAME', label: 'bKash merchant name' },
-  { key: 'NEXT_PUBLIC_BKASH_MERCHANT_NUMBER', label: 'bKash merchant number' },
-  { key: 'NEXT_PUBLIC_SENTRY_DSN', label: 'Sentry browser DSN', type: 'url', allowLocalhost: false }
+  { key: 'NEXT_PUBLIC_BKASH_MERCHANT_NUMBER', label: 'bKash merchant number' }
 ]
+
+const SENTRY_ENV = {
+  key: 'NEXT_PUBLIC_SENTRY_DSN',
+  label: 'Sentry browser DSN',
+  type: 'url',
+  allowLocalhost: false
+}
 
 export function validateFrontendEnv() {
   if (!shouldValidate()) return
 
+  const specs = [...REQUIRED_PRODUCTION_ENV]
+  if (process.env.NEXT_PUBLIC_SENTRY_ENABLED === 'true') {
+    specs.push(SENTRY_ENV)
+  }
+
   const errors = []
-  for (const spec of REQUIRED_PRODUCTION_ENV) {
+  for (const spec of specs) {
     const value = process.env[spec.key]?.trim() ?? ''
     if (isPlaceholder(value)) {
       errors.push(`${spec.key} is required for ${spec.label}.`)
