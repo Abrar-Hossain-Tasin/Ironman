@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { SiteHeader } from '@/components/layout/site-header'
+import { BRAND } from '@/lib/brand'
 
 type LegalShellProps = {
   title: string
@@ -45,8 +46,8 @@ export function LegalShell({ title, effectiveDate, intro, children }: LegalShell
 
           <p className="mt-8 max-w-3xl text-xs text-gray-500">
             This document is provided as a general template and is not a substitute for legal advice. For questions, write to{' '}
-            <a href="mailto:legal@ironman.local" className="font-semibold text-ironman-red underline">
-              legal@ironman.local
+            <a href={`mailto:${BRAND.email}`} className="font-semibold text-ironman-red underline">
+              {BRAND.email}
             </a>
             .
           </p>

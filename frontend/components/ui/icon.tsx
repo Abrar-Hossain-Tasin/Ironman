@@ -59,7 +59,7 @@ type IconProps = {
   'aria-hidden'?: boolean
 }
 
-export function Icon({ name, className, ...props }: IconProps) {
+export function Icon({ name, className, 'aria-hidden': ariaHidden = true, ...props }: IconProps) {
   const Component = icons[name] ?? Circle
-  return <Component className={className} {...props} />
+  return <Component className={className} aria-hidden={ariaHidden} {...props} />
 }

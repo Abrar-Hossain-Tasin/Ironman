@@ -22,6 +22,7 @@ export function AdminPricing() {
   const [history, setHistory] = useState<PricingCell[]>([])
   const [view, setView] = useState<'grid' | 'history'>('grid')
   const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -37,7 +38,7 @@ export function AdminPricing() {
       setPricing(nextPricing)
       setHistory(nextHistory)
     } catch (err) {
-      console.error('Load failed:', err)
+      toast.error(err instanceof Error ? err.message : 'Could not load pricing')
     } finally {
       setLoading(false)
     }
@@ -51,13 +52,12 @@ export function AdminPricing() {
     event.preventDefault()
     if (!token) return
 
-    // FIX: capture the form element reference BEFORE any await.
-    // React nullifies event.currentTarget after the handler yields,
-    // so event.currentTarget.reset() would throw a TypeError after
-    // the await — landing in the catch and showing a false error.
+    // Capture the form element before any await — React nullifies
+    // event.currentTarget after the handler yields.
     const formEl = event.currentTarget
     const form = new FormData(formEl)
 
+    setSubmitting(true)
     try {
       await apiFetch(endpoints.adminPricing, {
         method: 'POST',
@@ -70,10 +70,12 @@ export function AdminPricing() {
         }
       })
       toast.success('Price updated successfully')
-      formEl.reset() // safe: using the captured reference, not event.currentTarget
+      formEl.reset()
       await load()
     } catch (err) {
-      toast.error('Failed to update price')
+      toast.error(err instanceof Error ? err.message : 'Failed to update price')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -123,8 +125,8 @@ export function AdminPricing() {
               pricing={pricing} 
             />
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-ironman-navy-100 bg-white shadow-soft">
-              <table className="w-full text-sm text-left">
+            <div className="overflow-x-auto rounded-lg border border-ironman-navy-100 bg-white shadow-soft">
+              <table className="w-full min-w-[640px] text-sm text-left">
                 <thead className="bg-ironman-navy text-white">
                   <tr>
                     <th className="px-4 py-4">Clothing</th>
@@ -165,47 +167,46 @@ export function AdminPricing() {
 
         {/* Update Form */}
         <aside>
-          <form className="sticky top-6 rounded-2xl border border-ironman-navy-100 bg-white p-6 shadow-luxury" onSubmit={savePrice}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-ironman-red/10 text-ironman-red">
-                <Zap className="h-5 w-5" />
-              </div>
-              <h2 className="text-xl font-bold text-ironman-navy">Update Pricing</h2>
-            </div>
+          <form className="sticky top-6 rounded-lg border border-ironman-navy-100 bg-white p-5 shadow-soft" onSubmit={savePrice}>
+            <h2 className="flex items-center gap-2 text-lg font-bold text-ironman-navy">
+              <Zap className="h-5 w-5 text-ironman-red" aria-hidden />
+              Update pricing
+            </h2>
 
-            <div className="space-y-4">
+            <div className="mt-4 space-y-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Service Category</label>
-                <select name="serviceCategoryId" className="w-full rounded-xl border border-ironman-navy-100 bg-ironman-navy-50 px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-ironman-red outline-none" required>
+                <label className="text-xs font-medium uppercase tracking-wide text-gray-500">Service Category</label>
+                <select name="serviceCategoryId" className="tap-target w-full rounded-lg border border-ironman-navy-100 bg-ironman-navy-50 px-3 py-2 focus-ring" required>
                   <option value="">Select Service</option>
                   {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Clothing Type</label>
-                <select name="clothingTypeId" className="w-full rounded-xl border border-ironman-navy-100 bg-ironman-navy-50 px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-ironman-red outline-none" required>
+                <label className="text-xs font-medium uppercase tracking-wide text-gray-500">Clothing Type</label>
+                <select name="clothingTypeId" className="tap-target w-full rounded-lg border border-ironman-navy-100 bg-ironman-navy-50 px-3 py-2 focus-ring" required>
                   <option value="">Select Clothing</option>
                   {clothingTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Price (BDT)</label>
-                <input name="price" type="number" step="0.01" className="w-full rounded-xl border border-ironman-navy-100 bg-ironman-navy-50 px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-ironman-red outline-none" placeholder="0.00" required />
+                <label className="text-xs font-medium uppercase tracking-wide text-gray-500">Price (BDT)</label>
+                <input name="price" type="number" step="0.01" className="tap-target w-full rounded-lg border border-ironman-navy-100 bg-ironman-navy-50 px-3 py-2 focus-ring" placeholder="0.00" required />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Effective From</label>
-                <input name="effectiveFrom" type="date" className="w-full rounded-xl border border-ironman-navy-100 bg-ironman-navy-50 px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-ironman-red outline-none" defaultValue={new Date().toISOString().split('T')[0]} />
+                <label className="text-xs font-medium uppercase tracking-wide text-gray-500">Effective From</label>
+                <input name="effectiveFrom" type="date" className="tap-target w-full rounded-lg border border-ironman-navy-100 bg-ironman-navy-50 px-3 py-2 focus-ring" defaultValue={new Date().toISOString().split('T')[0]} />
               </div>
             </div>
 
-            <button 
-              type="submit" 
-              className="mt-6 w-full rounded-xl bg-ironman-red py-4 font-bold text-white shadow-glow hover:bg-ironman-red-dark transition-all active:scale-[0.98]"
+            <button
+              type="submit"
+              disabled={submitting}
+              className="tap-target focus-ring mt-4 w-full rounded-lg bg-ironman-red px-4 py-2 font-semibold text-white disabled:opacity-60"
             >
-              Update Live Price
+              {submitting ? 'Updating…' : 'Update live price'}
             </button>
           </form>
         </aside>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { MapPin, Mail, Clock, Phone, Instagram, Facebook, Twitter } from 'lucide-react'
+import { BRAND } from '@/lib/brand'
 
 const footerLinks = {
   services: [
@@ -50,22 +51,29 @@ export function SiteFooter() {
             <p className="font-body text-sm leading-7 text-white/60 max-w-xs">
               Dhaka's most trusted premium laundry, dry cleaning, and doorstep delivery service — fully tracked, fully transparent.
             </p>
-            {/* Social links */}
-            <div className="mt-6 flex items-center gap-3">
-              {[
-                { Icon: Facebook, label: 'Facebook' },
-                { Icon: Instagram, label: 'Instagram' },
-                { Icon: Twitter, label: 'Twitter' }
-              ].map(({ Icon, label }) => (
-                <button
-                  key={label}
-                  aria-label={label}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-white/50 transition-all duration-300 hover:border-ironman-red/50 hover:bg-ironman-red/10 hover:text-ironman-red"
-                >
-                  <Icon className="h-4 w-4" aria-hidden />
-                </button>
-              ))}
-            </div>
+            {/* Social links — only rendered for channels that have a URL configured */}
+            {BRAND.social.facebook || BRAND.social.instagram || BRAND.social.twitter ? (
+              <div className="mt-6 flex items-center gap-3">
+                {[
+                  { Icon: Facebook, label: 'Facebook', href: BRAND.social.facebook },
+                  { Icon: Instagram, label: 'Instagram', href: BRAND.social.instagram },
+                  { Icon: Twitter, label: 'Twitter', href: BRAND.social.twitter }
+                ]
+                  .filter((item) => item.href)
+                  .map(({ Icon, label, href }) => (
+                    <a
+                      key={label}
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={label}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-white/50 transition-all duration-300 hover:border-ironman-red/50 hover:bg-ironman-red/10 hover:text-ironman-red"
+                    >
+                      <Icon className="h-4 w-4" aria-hidden />
+                    </a>
+                  ))}
+              </div>
+            ) : null}
           </div>
 
           {/* Services */}
@@ -109,18 +117,20 @@ export function SiteFooter() {
               <li className="flex items-start gap-3">
                 <MapPin className="h-4 w-4 text-ironman-red mt-0.5 flex-shrink-0" aria-hidden />
                 <span className="font-body text-sm text-white/60 leading-relaxed">
-                  Dhaka, Bangladesh
+                  {BRAND.address}
                 </span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-ironman-red flex-shrink-0" aria-hidden />
-                <a href="mailto:support@ironman.local" className="font-body text-sm text-white/60 hover:text-white transition-colors">
-                  support@ironman.local
+                <a href={`mailto:${BRAND.email}`} className="font-body text-sm text-white/60 hover:text-white transition-colors">
+                  {BRAND.email}
                 </a>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="h-4 w-4 text-ironman-red flex-shrink-0" aria-hidden />
-                <span className="font-body text-sm text-white/60">+880 1700-000000</span>
+                <a href={`tel:${BRAND.phone.replace(/\s/g, '')}`} className="font-body text-sm text-white/60 hover:text-white transition-colors">
+                  {BRAND.phone}
+                </a>
               </li>
               <li>
                 <div className="mt-2 rounded-xl border border-white/8 p-4"

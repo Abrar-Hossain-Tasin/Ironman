@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { LegalSection, LegalShell } from '@/components/layout/legal-shell'
+import { BRAND } from '@/lib/brand'
 
 export const metadata: Metadata = {
   title: 'Refund Policy · IRONMAN Laundry',
@@ -97,7 +98,7 @@ export default function RefundPolicyPage() {
       <LegalSection title="8. Escalation">
         <p>
           If you are not satisfied with the outcome, write to{' '}
-          <a className="text-ironman-red underline" href="mailto:support@ironman.local">support@ironman.local</a> referencing your
+          <a className="text-ironman-red underline" href={`mailto:${BRAND.email}`}>{BRAND.email}</a> referencing your
           order number. A senior team member will personally re-examine the case and reply within 5 business days.
         </p>
       </LegalSection>

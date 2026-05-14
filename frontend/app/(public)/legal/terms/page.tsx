@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { LegalSection, LegalShell } from '@/components/layout/legal-shell'
+import { BRAND } from '@/lib/brand'
 
 export const metadata: Metadata = {
   title: 'Terms of Service · IRONMAN Laundry',
@@ -24,7 +25,7 @@ export default function TermsPage() {
       <LegalSection title="2. Your account">
         <p>
           You are responsible for safeguarding your login credentials and for all activity that occurs under your account. Notify us
-          immediately at <a className="text-ironman-red underline" href="mailto:support@ironman.local">support@ironman.local</a> if
+          immediately at <a className="text-ironman-red underline" href={`mailto:${BRAND.email}`}>{BRAND.email}</a> if
           you suspect any unauthorized access. We may suspend or terminate an account that we reasonably believe has been used in
           breach of these Terms.
         </p>
@@ -118,9 +119,9 @@ export default function TermsPage() {
 
       <LegalSection title="12. Contact">
         <p>
-          IRONMAN Laundry, Dhaka, Bangladesh.{' '}
-          <a className="text-ironman-red underline" href="mailto:support@ironman.local">support@ironman.local</a>{' '}
-          · +880 1700-000000.
+          IRONMAN Laundry, {BRAND.address}.{' '}
+          <a className="text-ironman-red underline" href={`mailto:${BRAND.email}`}>{BRAND.email}</a>{' '}
+          · {BRAND.phone}.
         </p>
       </LegalSection>
     </LegalShell>

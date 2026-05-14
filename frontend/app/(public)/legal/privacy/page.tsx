@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { LegalSection, LegalShell } from '@/components/layout/legal-shell'
+import { BRAND } from '@/lib/brand'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy · IRONMAN Laundry',
@@ -84,7 +85,7 @@ export default function PrivacyPage() {
           <li>Opt out of marketing communications.</li>
           <li>
             Request a copy of the personal information we hold about you by writing to{' '}
-            <a className="text-ironman-red underline" href="mailto:privacy@ironman.local">privacy@ironman.local</a>.
+            <a className="text-ironman-red underline" href={`mailto:${BRAND.email}`}>{BRAND.email}</a>.
           </li>
         </ul>
       </LegalSection>
@@ -121,7 +122,7 @@ export default function PrivacyPage() {
       <LegalSection title="12. Contact">
         <p>
           For privacy questions or requests, write to{' '}
-          <a className="text-ironman-red underline" href="mailto:privacy@ironman.local">privacy@ironman.local</a>.
+          <a className="text-ironman-red underline" href={`mailto:${BRAND.email}`}>{BRAND.email}</a>.
         </p>
       </LegalSection>
     </LegalShell>
