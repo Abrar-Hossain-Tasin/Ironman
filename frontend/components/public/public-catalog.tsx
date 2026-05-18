@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Icon } from '@/components/ui/icon'
 import { PricingTable } from '@/components/ui/pricing-table'
 import { CardSkeleton, TableSkeleton } from '@/components/ui/skeleton'
@@ -20,26 +21,28 @@ export function PublicCatalog({ mode }: PublicCatalogProps) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [nextCategories, nextClothingTypes, nextPricing] = await Promise.all([
-          apiFetch<ServiceCategory[]>(endpoints.categories),
-          apiFetch<ClothingType[]>(endpoints.clothingTypes),
-          apiFetch<PricingCell[]>(endpoints.pricing)
-        ])
-        setCategories(nextCategories)
-        setClothingTypes(nextClothingTypes)
-        setPricing(nextPricing)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not load services')
-      } finally {
-        setLoading(false)
-      }
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [nextCategories, nextClothingTypes, nextPricing] = await Promise.all([
+        apiFetch<ServiceCategory[]>(endpoints.categories),
+        apiFetch<ClothingType[]>(endpoints.clothingTypes),
+        apiFetch<PricingCell[]>(endpoints.pricing)
+      ])
+      setCategories(nextCategories)
+      setClothingTypes(nextClothingTypes)
+      setPricing(nextPricing)
+    } catch (err) {
+      // Surface a friendly message; the raw error stays in the console for debugging.
+      if (typeof console !== 'undefined') console.warn('Catalog load failed:', err)
+      setError("We couldn't load our service catalogue right now. Please check your connection and try again.")
+    } finally {
+      setLoading(false)
     }
-
-    void load()
   }, [])
+
+  useEffect(() => { void load() }, [load])
 
   const [clothingFilter, setClothingFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
@@ -58,7 +61,7 @@ export function PublicCatalog({ mode }: PublicCatalogProps) {
 
   if (loading) {
     return mode === 'home' ? (
-      <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" aria-busy="true" aria-label="Loading services">
         {Array.from({ length: 5 }).map((_, index) => <CardSkeleton key={index} />)}
       </div>
     ) : (
@@ -67,7 +70,35 @@ export function PublicCatalog({ mode }: PublicCatalogProps) {
   }
 
   if (error) {
-    return <div className="rounded-lg border border-ironman-red-100 bg-ironman-red-50 p-5 text-sm font-semibold text-ironman-red">{error}</div>
+    return (
+      <div
+        role="alert"
+        className="flex flex-col items-start gap-4 rounded-xl border border-ironman-red-100 bg-ironman-red-50 p-5 text-sm text-ironman-red sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" aria-hidden />
+          <p className="font-body font-semibold leading-relaxed">{error}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="tap-target focus-ring inline-flex flex-shrink-0 items-center justify-center gap-2 rounded-lg border border-ironman-red/30 bg-white px-4 py-2 font-body text-sm font-semibold text-ironman-red transition-colors hover:bg-ironman-red hover:text-white"
+        >
+          <RefreshCw className="h-4 w-4" aria-hidden />
+          Try again
+        </button>
+      </div>
+    )
+  }
+
+  // Empty-state guard — covers the case where the API responds but with no data.
+  const hasAnyData = decoratedCategories.length > 0 || decoratedClothingTypes.length > 0
+  if (!hasAnyData) {
+    return (
+      <p className="rounded-xl border border-dashed border-ironman-navy-100 bg-ironman-navy-50 p-6 text-center font-body text-sm text-gray-600">
+        Our service catalogue is being prepared. Please check back shortly.
+      </p>
+    )
   }
 
   if (mode === 'pricing') {
@@ -108,13 +139,15 @@ export function PublicCatalog({ mode }: PublicCatalogProps) {
 
   return (
     <>
-      <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {decoratedCategories.map((service) => (
-          <article key={service.id} className="rounded-lg border border-ironman-navy-100 bg-white p-5 shadow-soft">
+          <article key={service.id} className="flex h-full flex-col rounded-xl border border-ironman-navy-100 bg-white p-5 shadow-soft">
             <Icon name={service.icon ?? 'PackageCheck'} className="h-7 w-7 text-ironman-red" aria-hidden />
-            <h3 className="mt-4 text-lg font-bold text-ironman-navy">{service.name}</h3>
-            <p className="mt-2 min-h-16 text-sm leading-6 text-gray-600">{service.description}</p>
-            <p className="mt-4 text-sm font-semibold text-ironman-navy">Starts at {formatBdt(service.startingPrice ?? 0)}</p>
+            <h3 className="mt-4 font-display text-lg font-bold leading-snug text-ironman-navy">{service.name}</h3>
+            <p className="mt-2 line-clamp-3 font-body text-sm leading-6 text-gray-600">{service.description}</p>
+            <p className="mt-auto pt-4 font-body text-sm font-semibold text-ironman-navy">
+              Starts at {formatBdt(service.startingPrice ?? 0)}
+            </p>
           </article>
         ))}
       </div>

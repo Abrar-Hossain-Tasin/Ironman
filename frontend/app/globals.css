@@ -20,6 +20,8 @@ body {
   min-height: 100vh;
   background: #ffffff;
   color: #374151;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
@@ -44,6 +46,137 @@ textarea {
   }
 
   .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-ironman-red focus:ring-offset-2;
+    @apply focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ironman-red focus-visible:ring-offset-2;
+  }
+
+  /* Primary CTA: red fill with a subtle shine sweep on hover */
+  .btn-shimmer {
+    background-color: #D81B2A;
+    background-image: linear-gradient(135deg, #D81B2A 0%, #b81421 100%);
+    box-shadow: 0 8px 24px rgba(216, 27, 42, 0.28);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 0.25s ease;
+  }
+  .btn-shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.32) 50%, transparent 65%);
+    background-size: 220% 100%;
+    background-position: -120% center;
+    transition: background-position 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+  }
+  .btn-shimmer:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 32px rgba(216, 27, 42, 0.38);
+  }
+  .btn-shimmer:hover::after {
+    background-position: 120% center;
+  }
+  .btn-shimmer:active {
+    transform: translateY(0);
+    box-shadow: 0 6px 16px rgba(216, 27, 42, 0.32);
+  }
+
+  /* Secondary CTA: translucent glass for use on dark/photo backgrounds */
+  .btn-glass {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+  }
+  .btn-glass:hover {
+    background-color: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.45);
+  }
+  .btn-glass:active {
+    transform: translateY(1px);
+  }
+
+  /* Gold metallic gradient text used in testimonials heading */
+  .text-gold-metallic {
+    background: linear-gradient(135deg, #8B6914 0%, #C9A84C 40%, #e8c96e 60%, #C9A84C 80%, #8B6914 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* ─── Keyframes ──────────────────────────────────────────────────────────── */
+
+@keyframes ken-burns {
+  0% { transform: scale(1) translate(0%, 0%); }
+  100% { transform: scale(1.12) translate(-2%, -2%); }
+}
+@keyframes ken-burns-2 {
+  0% { transform: scale(1.1) translate(-2%, 0%); }
+  100% { transform: scale(1) translate(2%, -2%); }
+}
+@keyframes ken-burns-3 {
+  0% { transform: scale(1.05) translate(0%, -2%); }
+  100% { transform: scale(1.15) translate(-3%, 2%); }
+}
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.85); opacity: 0.55; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+@keyframes line-grow {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+@keyframes border-shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-ken-burns { animation: ken-burns 14s ease-in-out infinite alternate; }
+.animate-ken-burns-2 { animation: ken-burns-2 16s ease-in-out infinite alternate; }
+.animate-ken-burns-3 { animation: ken-burns-3 18s ease-in-out infinite alternate; }
+.animate-pulse-ring { animation: pulse-ring 2.4s ease-out infinite; }
+.animate-marquee { animation: marquee 48s linear infinite; }
+.animate-marquee:hover { animation-play-state: paused; }
+
+.ease-luxury { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Line-clamp utility (used for service card descriptions) */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Respect users who prefer reduced motion: kill decorative motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-ken-burns,
+  .animate-ken-burns-2,
+  .animate-ken-burns-3,
+  .animate-marquee,
+  .animate-pulse-ring {
+    animation: none !important;
   }
 }
