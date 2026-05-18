@@ -14,6 +14,13 @@ type AssignmentCardProps = {
   onToggleSelect?: (assignment: Assignment) => void
 }
 
+type AssignmentAction = {
+  label: string
+  onClick: () => void
+  disabled: boolean
+  className: string
+}
+
 export function AssignmentCard({
   assignment,
   onAccept,
@@ -26,6 +33,32 @@ export function AssignmentCard({
   const canAccept = assignment.status === 'pending'
   const canStart = assignment.status === 'pending' || assignment.status === 'accepted'
   const canComplete = assignment.status === 'accepted' || assignment.status === 'in_progress'
+  const actions = [
+    onAccept
+      ? {
+          label: 'Accept',
+          onClick: () => onAccept(assignment),
+          disabled: !canAccept,
+          className: 'border border-ironman-navy bg-white text-ironman-navy'
+        }
+      : null,
+    onStart
+      ? {
+          label: 'Start',
+          onClick: () => onStart(assignment),
+          disabled: !canStart,
+          className: 'bg-ironman-navy text-white'
+        }
+      : null,
+    onComplete
+      ? {
+          label: 'Done',
+          onClick: () => onComplete(assignment),
+          disabled: !canComplete,
+          className: 'bg-ironman-red text-white'
+        }
+      : null
+  ].filter((action): action is AssignmentAction => Boolean(action))
 
   return (
     <article
@@ -69,17 +102,21 @@ export function AssignmentCard({
           COD due: {formatBdt(assignment.amountDue)}
         </p>
       ) : null}
-      <div className="mt-5 grid grid-cols-3 gap-2">
-        <button className="tap-target focus-ring rounded-lg border border-ironman-navy px-3 py-2 text-sm font-semibold text-ironman-navy disabled:opacity-60" type="button" onClick={() => onAccept?.(assignment)} disabled={!onAccept || !canAccept}>
-          Accept
-        </button>
-        <button className="tap-target focus-ring rounded-lg bg-ironman-navy px-3 py-2 text-sm font-semibold text-white disabled:opacity-60" type="button" onClick={() => onStart?.(assignment)} disabled={!onStart || !canStart}>
-          Start
-        </button>
-        <button className="tap-target focus-ring rounded-lg bg-ironman-red px-3 py-2 text-sm font-semibold text-white disabled:opacity-60" type="button" onClick={() => onComplete?.(assignment)} disabled={!onComplete || !canComplete}>
-          Done
-        </button>
-      </div>
+      {actions.length > 0 ? (
+        <div className="mt-5 flex flex-wrap gap-2">
+          {actions.map((action) => (
+            <button
+              key={action.label}
+              className={`tap-target focus-ring min-w-[6rem] flex-1 rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-60 ${action.className}`}
+              type="button"
+              onClick={action.onClick}
+              disabled={action.disabled}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </article>
   )
 }

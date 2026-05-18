@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { Component, useEffect, useState, type ReactNode } from 'react'
 import { RadioTower } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
@@ -11,6 +11,26 @@ const LocationMap = dynamic(() => import('@/components/tracking/location-map'), 
   ssr: false,
   loading: () => <div className="h-80 animate-pulse rounded-lg bg-ironman-navy-50" />
 })
+
+class MapErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div className="grid h-80 place-items-center rounded-lg border border-dashed border-ironman-navy-100 bg-ironman-navy-50 px-4 text-center text-sm font-semibold text-ironman-navy">
+          Live map is temporarily unavailable. GPS updates are still refreshing in the background.
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
 
 export function AdminLiveLocations() {
   const token = useAuthStore((state) => state.accessToken)
@@ -60,7 +80,9 @@ export function AdminLiveLocations() {
           Refreshes every 5s
         </span>
       </div>
-      <LocationMap locations={locations} heightClassName="h-80" />
+      <MapErrorBoundary>
+        <LocationMap locations={locations} heightClassName="h-80" />
+      </MapErrorBoundary>
     </section>
   )
 }

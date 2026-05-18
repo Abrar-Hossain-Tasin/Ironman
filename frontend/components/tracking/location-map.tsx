@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useRef } from 'react'
 import L from 'leaflet'
-import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { DeliveryLocation } from '@/types'
 
@@ -37,65 +36,112 @@ export default function LocationMap({ locations, path = [], heightClassName = 'h
 
   return (
     <div className={`${heightClassName} overflow-hidden rounded-lg border border-ironman-navy-100 shadow-soft`}>
-      <MapContainer
-        center={[Number(center.latitude), Number(center.longitude)]}
-        zoom={15}
-        scrollWheelZoom={false}
-        className="h-full w-full"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <MapViewport locations={validPath.length > 1 ? [...validPath, ...validLocations] : validLocations} />
-        {validPath.length > 1 ? (
-          <Polyline
-            positions={validPath.map((location) => [Number(location.latitude), Number(location.longitude)])}
-            pathOptions={{ color: '#D81B2A', weight: 4, opacity: 0.8 }}
-          />
-        ) : null}
-        {validLocations.map((location) => (
-          <Marker
-            key={`${location.deliveryManId}-${location.orderId ?? 'idle'}`}
-            position={[Number(location.latitude), Number(location.longitude)]}
-            icon={markerIcon}
-          >
-            <Popup>
-              <div className="space-y-1 text-sm">
-                <p className="font-semibold">{location.deliveryManName}</p>
-                {location.orderNumber ? <p>Order {location.orderNumber}</p> : <p>Not attached to an order</p>}
-                {location.accuracy ? <p>Accuracy {Math.round(Number(location.accuracy))} m</p> : null}
-                <p>{formatUpdatedAt(location.updatedAt)}</p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+      <LeafletMap locations={validLocations} path={validPath} center={center} />
     </div>
   )
 }
 
-function MapViewport({ locations }: { locations: DeliveryLocation[] }) {
-  const map = useMap()
-  const bounds = useMemo(() => {
-    const points = locations.map((location) => [
+function LeafletMap({
+  locations,
+  path,
+  center
+}: {
+  locations: DeliveryLocation[]
+  path: DeliveryLocation[]
+  center: DeliveryLocation
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<L.Map | null>(null)
+  const layerRef = useRef<L.LayerGroup | null>(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container || mapRef.current) return
+
+    clearLeafletMarker(container)
+    const map = L.map(container, { scrollWheelZoom: false }).setView(
+      [Number(center.latitude), Number(center.longitude)],
+      15
+    )
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map)
+    const layerGroup = L.layerGroup().addTo(map)
+    mapRef.current = map
+    layerRef.current = layerGroup
+
+    return () => {
+      layerGroup.clearLayers()
+      map.remove()
+      mapRef.current = null
+      layerRef.current = null
+      clearLeafletMarker(container)
+    }
+  }, [center.latitude, center.longitude])
+
+  useEffect(() => {
+    const map = mapRef.current
+    const layerGroup = layerRef.current
+    if (!map || !layerGroup) return
+
+    layerGroup.clearLayers()
+    const viewportLocations = path.length > 1 ? [...path, ...locations] : locations
+    const points = viewportLocations.map((location) => [
       Number(location.latitude),
       Number(location.longitude)
     ] as [number, number])
-    return L.latLngBounds(points)
-  }, [locations])
 
-  useEffect(() => {
-    if (!locations.length) return
-    if (locations.length === 1) {
-      const center = bounds.getCenter()
-      map.setView([center.lat, center.lng], Math.max(map.getZoom(), 15), { animate: true })
-      return
+    if (path.length > 1) {
+      L.polyline(
+        path.map((location) => [Number(location.latitude), Number(location.longitude)]),
+        { color: '#D81B2A', weight: 4, opacity: 0.8 }
+      ).addTo(layerGroup)
     }
-    map.fitBounds(bounds, { animate: true, maxZoom: 15, padding: [32, 32] })
-  }, [bounds, locations.length, map])
 
-  return null
+    for (const location of locations) {
+      L.marker([Number(location.latitude), Number(location.longitude)], { icon: markerIcon })
+        .bindPopup(createPopupContent(location))
+        .addTo(layerGroup)
+    }
+
+    if (points.length === 1) {
+      map.setView(points[0], Math.max(map.getZoom(), 15), { animate: true })
+    } else if (points.length > 1) {
+      map.fitBounds(L.latLngBounds(points), { animate: true, maxZoom: 15, padding: [32, 32] })
+    }
+  }, [locations, path])
+
+  return <div ref={containerRef} className="h-full w-full" />
+}
+
+function clearLeafletMarker(container: HTMLDivElement & { _leaflet_id?: number }) {
+  if (container._leaflet_id) delete container._leaflet_id
+}
+
+function createPopupContent(location: DeliveryLocation) {
+  const container = document.createElement('div')
+  container.className = 'space-y-1 text-sm'
+
+  const name = document.createElement('p')
+  name.className = 'font-semibold'
+  name.textContent = location.deliveryManName
+  container.appendChild(name)
+
+  const order = document.createElement('p')
+  order.textContent = location.orderNumber ? `Order ${location.orderNumber}` : 'Not attached to an order'
+  container.appendChild(order)
+
+  if (location.accuracy) {
+    const accuracy = document.createElement('p')
+    accuracy.textContent = `Accuracy ${Math.round(Number(location.accuracy))} m`
+    container.appendChild(accuracy)
+  }
+
+  const updated = document.createElement('p')
+  updated.textContent = formatUpdatedAt(location.updatedAt)
+  container.appendChild(updated)
+
+  return container
 }
 
 function isValidLocation(location: DeliveryLocation) {
