@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
-import { Menu, X } from 'lucide-react'
+import { Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
 import { LogoutButton } from '@/components/auth/logout-button'
 import { LanguageToggle } from '@/components/language-toggle'
 import { Icon } from '@/components/ui/icon'
@@ -17,6 +17,8 @@ type PortalShellProps = {
   children: ReactNode
 }
 
+const COLLAPSED_STORAGE_KEY = 'ironman-sidebar-collapsed'
+
 function isActive(href: string, pathname: string | null) {
   if (!pathname) return false
   if (pathname === href) return true
@@ -27,6 +29,25 @@ function isActive(href: string, pathname: string | null) {
 export function PortalShell({ title, subtitle, nav, children }: PortalShellProps) {
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
+  // Default to expanded on first render so SSR/CSR markup matches; we hydrate
+  // the persisted preference on the client right after mount.
+  const [collapsed, setCollapsed] = useState(false)
+
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(COLLAPSED_STORAGE_KEY) === '1')
+    } catch {
+      // localStorage can be unavailable in strict privacy modes.
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(COLLAPSED_STORAGE_KEY, collapsed ? '1' : '0')
+    } catch {
+      // noop
+    }
+  }, [collapsed])
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => {
@@ -42,30 +63,62 @@ export function PortalShell({ title, subtitle, nav, children }: PortalShellProps
     }
   }, [menuOpen])
 
-  const navLinks = nav.map((item) => {
-    const active = isActive(item.href, pathname)
-    return (
-      <Link
-        key={item.href}
-        href={item.href}
-        aria-current={active ? 'page' : undefined}
-        className={cn(
-          'flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold text-white/80 hover:bg-white/10 hover:text-white',
-          active && 'bg-white/10 text-white'
-        )}
-      >
-        <Icon name={item.icon} className="h-4 w-4" aria-hidden />
-        {item.label}
-      </Link>
-    )
-  })
+  function renderNavLinks(compact: boolean) {
+    return nav.map((item) => {
+      const active = isActive(item.href, pathname)
+      return (
+        <Link
+          key={item.href}
+          href={item.href}
+          aria-current={active ? 'page' : undefined}
+          title={compact ? item.label : undefined}
+          className={cn(
+            'flex items-center rounded-lg text-sm font-semibold text-white/80 hover:bg-white/10 hover:text-white',
+            compact ? 'justify-center px-2 py-3' : 'gap-3 px-3 py-3',
+            active && 'bg-white/10 text-white'
+          )}
+        >
+          <Icon name={item.icon} className="h-4 w-4 shrink-0" aria-hidden />
+          {compact ? <span className="sr-only">{item.label}</span> : <span>{item.label}</span>}
+        </Link>
+      )
+    })
+  }
 
   return (
     <div className="min-h-screen bg-ironman-navy-50">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 bg-ironman-navy text-white lg:block">
-        <div className="flex h-16 items-center border-b border-white/10 px-6 text-xl font-bold">IRONMAN</div>
-        <nav className="space-y-1 px-3 py-5">{navLinks}</nav>
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 hidden bg-ironman-navy text-white transition-[width] duration-200 ease-out lg:block',
+          collapsed ? 'w-16' : 'w-64'
+        )}
+      >
+        <div
+          className={cn(
+            'flex h-16 items-center border-b border-white/10',
+            collapsed ? 'justify-center px-2' : 'justify-between px-6'
+          )}
+        >
+          {!collapsed ? <span className="text-xl font-bold">IRONMAN</span> : null}
+          <button
+            type="button"
+            onClick={() => setCollapsed((v) => !v)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!collapsed}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="focus-ring rounded-lg p-1.5 text-white/70 hover:bg-white/10 hover:text-white"
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="h-5 w-5" aria-hidden />
+            ) : (
+              <PanelLeftClose className="h-5 w-5" aria-hidden />
+            )}
+          </button>
+        </div>
+        <nav className={cn('space-y-1 py-5', collapsed ? 'px-2' : 'px-3')}>
+          {renderNavLinks(collapsed)}
+        </nav>
       </aside>
 
       {/* Mobile drawer */}
@@ -100,11 +153,16 @@ export function PortalShell({ title, subtitle, nav, children }: PortalShellProps
               <X className="h-5 w-5" aria-hidden />
             </button>
           </div>
-          <nav className="space-y-1 px-3 py-5">{navLinks}</nav>
+          <nav className="space-y-1 px-3 py-5">{renderNavLinks(false)}</nav>
         </aside>
       </div>
 
-      <div className="lg:pl-64">
+      <div
+        className={cn(
+          'transition-[padding] duration-200 ease-out',
+          collapsed ? 'lg:pl-16' : 'lg:pl-64'
+        )}
+      >
         <header className="border-b border-ironman-navy-100 bg-white">
           <div className="container-page flex min-h-16 flex-wrap items-center justify-between gap-3 py-4">
             <div className="flex items-center gap-2">
