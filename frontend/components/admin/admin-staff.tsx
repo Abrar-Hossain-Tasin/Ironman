@@ -1,7 +1,7 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
-import { KeyRound, Pencil, Power, PowerOff, Star, X } from 'lucide-react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { Activity, AlertTriangle, CheckCheck, Hourglass, KeyRound, Pencil, Power, PowerOff, Star, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -9,10 +9,207 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
-import { statusLabel } from '@/lib/utils'
-import type { ReviewResponse, UserRole, UserSummary } from '@/types'
+import { cn, statusLabel } from '@/lib/utils'
+import type { Assignment, ReviewResponse, UserRole, UserSummary } from '@/types'
 
 const STAFF_ROLES: UserRole[] = ['delivery_man', 'wash_man', 'iron_man', 'dry_clean_man']
+
+// Age thresholds (minutes since assignedAt) that define SLA bands.
+// Kept in one place so they can be tuned once we have production data
+// or a real per-task SLA field on the backend.
+const AGING_THRESHOLD_MIN = 60
+const URGENT_THRESHOLD_MIN = 240
+
+type StaffStats = {
+  active: number
+  aging: number
+  urgent: number
+  completedToday: number
+  avgActiveAgeMin: number
+}
+
+const EMPTY_STATS: StaffStats = {
+  active: 0,
+  aging: 0,
+  urgent: 0,
+  completedToday: 0,
+  avgActiveAgeMin: 0
+}
+
+function isActiveStatus(status: Assignment['status']) {
+  return status === 'pending' || status === 'accepted' || status === 'in_progress'
+}
+
+function startOfTodayMs(): number {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
+function computeStaffStats(assignments: Assignment[], now: number, dayStart: number): Map<string, StaffStats> {
+  const buckets = new Map<string, Assignment[]>()
+  for (const a of assignments) {
+    const id = a.assignedTo?.id
+    if (!id) continue
+    const bucket = buckets.get(id) ?? []
+    bucket.push(a)
+    buckets.set(id, bucket)
+  }
+  const out = new Map<string, StaffStats>()
+  for (const [id, items] of buckets) {
+    let active = 0
+    let aging = 0
+    let urgent = 0
+    let completedToday = 0
+    let totalActiveAge = 0
+    for (const a of items) {
+      if (isActiveStatus(a.status)) {
+        active++
+        const assignedMs = a.assignedAt ? new Date(a.assignedAt).getTime() : NaN
+        const ageMin = Number.isNaN(assignedMs) ? 0 : Math.max(0, Math.floor((now - assignedMs) / 60000))
+        totalActiveAge += ageMin
+        if (ageMin >= URGENT_THRESHOLD_MIN) urgent++
+        else if (ageMin >= AGING_THRESHOLD_MIN) aging++
+      }
+      if (a.status === 'completed' && a.completedAt) {
+        const completedMs = new Date(a.completedAt).getTime()
+        if (!Number.isNaN(completedMs) && completedMs >= dayStart) completedToday++
+      }
+    }
+    out.set(id, {
+      active,
+      aging,
+      urgent,
+      completedToday,
+      avgActiveAgeMin: active > 0 ? Math.floor(totalActiveAge / active) : 0
+    })
+  }
+  return out
+}
+
+function formatAgeMinutes(min: number): string {
+  if (min <= 0) return '—'
+  if (min < 60) return `${min}m`
+  const hours = Math.floor(min / 60)
+  if (hours < 24) {
+    const remMin = min - hours * 60
+    return remMin > 0 ? `${hours}h ${remMin}m` : `${hours}h`
+  }
+  return `${Math.floor(hours / 24)}d`
+}
+
+function WorkloadSummary({
+  staffCount,
+  active,
+  aging,
+  urgent,
+  completedToday
+}: {
+  staffCount: number
+  active: number
+  aging: number
+  urgent: number
+  completedToday: number
+}) {
+  return (
+    <div className="rounded-lg border border-ironman-navy-100 bg-white p-4 shadow-soft">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-ironman-navy">
+        <span>
+          <strong className="font-semibold">{staffCount}</strong>{' '}
+          <span className="text-gray-500">staff</span>
+        </span>
+        <SummaryDot />
+        <span className="inline-flex items-center gap-1.5">
+          <Activity className="h-4 w-4 text-ironman-navy/70" aria-hidden />
+          <strong className="font-semibold">{active}</strong>{' '}
+          <span className="text-gray-500">active tasks</span>
+        </span>
+        {aging > 0 ? (
+          <>
+            <SummaryDot />
+            <span className="inline-flex items-center gap-1.5 text-amber-700">
+              <Hourglass className="h-4 w-4" aria-hidden />
+              <strong className="font-semibold">{aging}</strong> aging
+            </span>
+          </>
+        ) : null}
+        {urgent > 0 ? (
+          <>
+            <SummaryDot />
+            <span className="inline-flex items-center gap-1.5 font-semibold text-ironman-red">
+              <AlertTriangle className="h-4 w-4" aria-hidden />
+              {urgent} urgent SLA breach{urgent === 1 ? '' : 'es'}
+            </span>
+          </>
+        ) : null}
+        <SummaryDot />
+        <span className="inline-flex items-center gap-1.5 text-emerald-700">
+          <CheckCheck className="h-4 w-4" aria-hidden />
+          <strong className="font-semibold">{completedToday}</strong>{' '}
+          <span className="text-emerald-700/80">done today</span>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function SummaryDot() {
+  return <span className="text-gray-300" aria-hidden>·</span>
+}
+
+function StaffSlaStrip({ stats }: { stats: StaffStats }) {
+  const noWork = stats.active === 0 && stats.completedToday === 0
+  if (noWork) {
+    return (
+      <p className="mt-3 rounded-md bg-ironman-navy-50/60 px-3 py-2 text-xs text-gray-500">
+        No assignments in current window.
+      </p>
+    )
+  }
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="grid grid-cols-4 gap-2 rounded-lg bg-ironman-navy-50/60 p-2.5">
+        <SlaCell label="Active" value={stats.active} tone="navy" />
+        <SlaCell label="Aging" value={stats.aging} tone="amber" />
+        <SlaCell label="Urgent" value={stats.urgent} tone="red" />
+        <SlaCell label="Done today" value={stats.completedToday} tone="emerald" />
+      </div>
+      {stats.active > 0 ? (
+        <p className="text-xs text-gray-500">
+          Avg active task age: <strong className="font-semibold text-ironman-navy">{formatAgeMinutes(stats.avgActiveAgeMin)}</strong>
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+const SLA_TONE_VALUE: Record<'navy' | 'amber' | 'red' | 'emerald', string> = {
+  navy: 'text-ironman-navy',
+  amber: 'text-amber-700',
+  red: 'text-ironman-red',
+  emerald: 'text-emerald-700'
+}
+
+function SlaCell({
+  label,
+  value,
+  tone
+}: {
+  label: string
+  value: number
+  tone: 'navy' | 'amber' | 'red' | 'emerald'
+}) {
+  // Zero values stay muted so the eye is drawn to non-empty buckets first.
+  const muted = value === 0
+  return (
+    <div className="text-center">
+      <p className={cn('text-base font-bold leading-tight', muted ? 'text-gray-400' : SLA_TONE_VALUE[tone])}>
+        {value}
+      </p>
+      <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500">{label}</p>
+    </div>
+  )
+}
 
 type StaffDraft = {
   fullName: string
@@ -26,6 +223,7 @@ export function AdminStaff() {
   const token = useAuthStore((state) => state.accessToken)
   const confirm = useConfirm()
   const [staff, setStaff] = useState<UserSummary[]>([])
+  const [assignments, setAssignments] = useState<Assignment[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<UserSummary | null>(null)
@@ -44,11 +242,50 @@ export function AdminStaff() {
   async function load() {
     if (!token) return
     try {
-      setStaff(await apiFetch<UserSummary[]>('/admin/staff', { token }))
+      // Pulling assignments alongside staff lets us derive workload + SLA
+      // signals client-side without a dedicated backend endpoint. The
+      // assignments list is bounded by current operational volume; revisit
+      // if it grows enough to dominate page load.
+      const [staffList, assignmentList] = await Promise.all([
+        apiFetch<UserSummary[]>('/admin/staff', { token }),
+        apiFetch<Assignment[]>('/admin/assignments', { token }).catch((): Assignment[] => [])
+      ])
+      setStaff(staffList)
+      setAssignments(assignmentList)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load staff')
     }
   }
+
+  const staffStats = useMemo(() => {
+    return computeStaffStats(assignments, Date.now(), startOfTodayMs())
+  }, [assignments])
+
+  const sortedStaff = useMemo(() => {
+    // Surface staff who need attention first: urgent breaches, then total
+    // active workload, then alphabetical as a stable tiebreak.
+    return staff.slice().sort((a, b) => {
+      const sa = staffStats.get(a.id) ?? EMPTY_STATS
+      const sb = staffStats.get(b.id) ?? EMPTY_STATS
+      if (sb.urgent !== sa.urgent) return sb.urgent - sa.urgent
+      if (sb.active !== sa.active) return sb.active - sa.active
+      return a.fullName.localeCompare(b.fullName)
+    })
+  }, [staff, staffStats])
+
+  const overall = useMemo(() => {
+    let active = 0
+    let urgent = 0
+    let aging = 0
+    let completedToday = 0
+    for (const s of staffStats.values()) {
+      active += s.active
+      urgent += s.urgent
+      aging += s.aging
+      completedToday += s.completedToday
+    }
+    return { active, urgent, aging, completedToday }
+  }, [staffStats])
 
   useEffect(() => {
     void load()
@@ -211,13 +448,24 @@ export function AdminStaff() {
     <RequireAuth roles={['admin']}>
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="space-y-4">
+          <WorkloadSummary
+            staffCount={staff.length}
+            active={overall.active}
+            aging={overall.aging}
+            urgent={overall.urgent}
+            completedToday={overall.completedToday}
+          />
           <div className="grid gap-4 md:grid-cols-2">
-            {staff.map((person) => (
+            {sortedStaff.map((person) => {
+              const stats = staffStats.get(person.id) ?? EMPTY_STATS
+              return (
               <article
                 key={person.id}
-                className={`rounded-lg border bg-white p-5 shadow-soft ${
-                  person.active ? 'border-ironman-navy-100' : 'border-gray-200 opacity-70'
-                }`}
+                className={cn(
+                  'rounded-lg border bg-white p-5 shadow-soft',
+                  person.active ? 'border-ironman-navy-100' : 'border-gray-200 opacity-70',
+                  stats.urgent > 0 && person.active && 'border-ironman-red/40 ring-1 ring-ironman-red/15'
+                )}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -228,6 +476,8 @@ export function AdminStaff() {
                   </div>
                   <StatusBadge status={person.active ? 'accepted' : 'rejected'} />
                 </div>
+
+                {person.active ? <StaffSlaStrip stats={stats} /> : null}
 
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
@@ -275,7 +525,8 @@ export function AdminStaff() {
                   ) : null}
                 </div>
               </article>
-            ))}
+              )
+            })}
           </div>
 
           {selected ? (
