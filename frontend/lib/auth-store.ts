@@ -103,3 +103,10 @@ export function roleHome(role?: string) {
   if (role === 'wash_man' || role === 'iron_man' || role === 'dry_clean_man') return '/worker/dashboard'
   return '/customer/dashboard'
 }
+
+export function orderHrefForRole(role: string | undefined, orderId: string | null | undefined) {
+  if (!orderId) return null
+  if (role === 'admin') return `/admin/orders/${orderId}`
+  if (role === 'customer') return `/customer/orders/${orderId}`
+  return null
+}

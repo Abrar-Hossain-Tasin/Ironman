@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
-import { useAuthStore } from '@/lib/auth-store'
+import { orderHrefForRole, useAuthStore } from '@/lib/auth-store'
 import { getSupabaseClient } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -58,6 +58,7 @@ function timeAgo(iso: string) {
 export function NotificationBell() {
   const token = useAuthStore((state) => state.accessToken)
   const userId = useAuthStore((state) => state.user?.id)
+  const userRole = useAuthStore((state) => state.user?.role)
   const [items, setItems] = useState<NotificationResponse[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -206,11 +207,9 @@ export function NotificationBell() {
             ) : (
               items.slice(0, MAX_PANEL_ITEMS).map((item) => {
                 const { Icon, tone } = iconForType(item.type)
-                return (
-                  <li
-                    key={item.id}
-                    className={cn('flex gap-3 px-4 py-3', !item.read && 'bg-ironman-navy-50/50')}
-                  >
+                const href = orderHrefForRole(userRole, item.referenceId)
+                const body = (
+                  <>
                     <div className={cn('mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full', tone)} aria-hidden>
                       <Icon className="h-3.5 w-3.5" />
                     </div>
@@ -221,12 +220,33 @@ export function NotificationBell() {
                         {timeAgo(item.createdAt)}
                       </p>
                     </div>
+                  </>
+                )
+                return (
+                  <li
+                    key={item.id}
+                    className={cn('flex gap-3', !item.read && 'bg-ironman-navy-50/50')}
+                  >
+                    {href ? (
+                      <Link
+                        href={href}
+                        onClick={() => {
+                          setOpen(false)
+                          if (!item.read) void markOne(item.id)
+                        }}
+                        className="focus-ring flex flex-1 gap-3 px-4 py-3 hover:bg-ironman-navy-50/60"
+                      >
+                        {body}
+                      </Link>
+                    ) : (
+                      <div className="flex flex-1 gap-3 px-4 py-3">{body}</div>
+                    )}
                     {!item.read ? (
                       <button
                         type="button"
                         onClick={() => markOne(item.id)}
                         aria-label="Mark as read"
-                        className="focus-ring shrink-0 self-start rounded-md p-1 text-gray-400 hover:bg-ironman-navy-50 hover:text-ironman-navy"
+                        className="focus-ring shrink-0 self-start rounded-md p-1 pr-4 pt-3 text-gray-400 hover:text-ironman-navy"
                       >
                         <Check className="h-3.5 w-3.5" aria-hidden />
                       </button>

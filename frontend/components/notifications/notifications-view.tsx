@@ -1,12 +1,13 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { CheckCheck, Inbox } from 'lucide-react'
 import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
-import { useAuthStore } from '@/lib/auth-store'
+import { orderHrefForRole, useAuthStore } from '@/lib/auth-store'
 import { getSupabaseClient } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import type { NotificationResponse } from '@/types'
@@ -21,6 +22,7 @@ function formatDate(iso: string) {
 export function NotificationsView() {
   const token = useAuthStore((state) => state.accessToken)
   const userId = useAuthStore((state) => state.user?.id)
+  const userRole = useAuthStore((state) => state.user?.role)
   const [items, setItems] = useState<NotificationResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
@@ -140,44 +142,64 @@ export function NotificationsView() {
           </div>
         ) : (
           <ul className="space-y-2">
-            {filtered.map((item) => (
-              <li
-                key={item.id}
-                className={cn(
-                  'flex items-start gap-3 rounded-xl border bg-white p-4 shadow-soft transition',
-                  item.read
-                    ? 'border-ironman-navy-100'
-                    : 'border-ironman-red-100 bg-ironman-red-50/30'
-                )}
-              >
-                <span
-                  className={cn(
-                    'mt-1 h-2.5 w-2.5 shrink-0 rounded-full',
-                    item.read ? 'bg-ironman-navy-100' : 'bg-ironman-red'
-                  )}
-                  aria-hidden
-                />
-                <div className="flex-1">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="text-sm font-bold text-ironman-navy">{item.title}</p>
-                    <p className="text-xs text-gray-500">{formatDate(item.createdAt)}</p>
+            {filtered.map((item) => {
+              const href = orderHrefForRole(userRole, item.referenceId)
+              const content = (
+                <>
+                  <span
+                    className={cn(
+                      'mt-1 h-2.5 w-2.5 shrink-0 rounded-full',
+                      item.read ? 'bg-ironman-navy-100' : 'bg-ironman-red'
+                    )}
+                    aria-hidden
+                  />
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-sm font-bold text-ironman-navy">{item.title}</p>
+                      <p className="text-xs text-gray-500">{formatDate(item.createdAt)}</p>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-700">{item.body}</p>
+                    <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-ironman-navy-200">
+                      {item.type.replace(/_/g, ' ')}
+                    </p>
                   </div>
-                  <p className="mt-1 text-sm text-gray-700">{item.body}</p>
-                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-ironman-navy-200">
-                    {item.type.replace(/_/g, ' ')}
-                  </p>
-                </div>
-                {!item.read ? (
-                  <button
-                    type="button"
-                    onClick={() => markOne(item.id)}
-                    className="focus-ring shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-ironman-red hover:bg-ironman-red-50"
-                  >
-                    Mark read
-                  </button>
-                ) : null}
-              </li>
-            ))}
+                </>
+              )
+              return (
+                <li
+                  key={item.id}
+                  className={cn(
+                    'flex items-start gap-3 rounded-xl border bg-white shadow-soft transition',
+                    item.read
+                      ? 'border-ironman-navy-100'
+                      : 'border-ironman-red-100 bg-ironman-red-50/30'
+                  )}
+                >
+                  {href ? (
+                    <Link
+                      href={href}
+                      onClick={() => {
+                        if (!item.read) void markOne(item.id)
+                      }}
+                      className="focus-ring flex flex-1 items-start gap-3 rounded-xl p-4 hover:bg-ironman-navy-50/40"
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div className="flex flex-1 items-start gap-3 p-4">{content}</div>
+                  )}
+                  {!item.read ? (
+                    <button
+                      type="button"
+                      onClick={() => markOne(item.id)}
+                      className="focus-ring m-2 shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-ironman-red hover:bg-ironman-red-50"
+                    >
+                      Mark read
+                    </button>
+                  ) : null}
+                </li>
+              )
+            })}
           </ul>
         )}
       </main>
