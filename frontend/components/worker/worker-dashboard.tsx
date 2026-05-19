@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { AlarmClock, ArrowDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { AssignmentCard } from '@/components/tasks/assignment-card'
@@ -9,10 +10,101 @@ import { WorkerBatchBar } from '@/components/worker/worker-batch-bar'
 import { CardSkeleton } from '@/components/ui/skeleton'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
-import { statusLabel } from '@/lib/utils'
-import type { Assignment, AssignmentType } from '@/types'
+import { cn, statusLabel } from '@/lib/utils'
+import type { Assignment, AssignmentStatus, AssignmentType } from '@/types'
 
 const STATION_ORDER: AssignmentType[] = ['wash', 'iron', 'dry_clean']
+
+// Lower rank = surface earlier in the queue. The intent is "what should I
+// grab next?": unaccepted work first, then accepted-but-not-started, then
+// already-running. Terminal states sink to the bottom.
+const STATUS_RANK: Record<AssignmentStatus, number> = {
+  pending: 0,
+  accepted: 1,
+  in_progress: 2,
+  completed: 3,
+  rejected: 4
+}
+
+type AgeLevel = 'fresh' | 'aging' | 'urgent'
+
+// Without a per-task SLA field on the backend, age-since-assigned is the
+// best urgency proxy. Tune these thresholds in one place if production
+// data shows different breakpoints.
+function ageLevelFromMinutes(min: number): AgeLevel {
+  if (min < 60) return 'fresh'
+  if (min < 240) return 'aging'
+  return 'urgent'
+}
+
+function ageMinutes(assignedAt: string | null | undefined, now: number): number {
+  if (!assignedAt) return 0
+  const parsed = new Date(assignedAt).getTime()
+  if (Number.isNaN(parsed)) return 0
+  return Math.max(0, Math.floor((now - parsed) / 60000))
+}
+
+function formatAge(min: number): string {
+  if (min < 1) return 'just now'
+  if (min < 60) return `${min}m ago`
+  const hours = Math.floor(min / 60)
+  if (hours < 24) {
+    const remMin = min - hours * 60
+    return remMin > 0 ? `${hours}h ${remMin}m ago` : `${hours}h ago`
+  }
+  return `${Math.floor(hours / 24)}d ago`
+}
+
+function compareForQueue(a: Assignment, b: Assignment): number {
+  const rankDiff = STATUS_RANK[a.status] - STATUS_RANK[b.status]
+  if (rankDiff !== 0) return rankDiff
+  // Oldest assignment first within the same status so SLA pressure rises naturally.
+  const ta = a.assignedAt ? new Date(a.assignedAt).getTime() : 0
+  const tb = b.assignedAt ? new Date(b.assignedAt).getTime() : 0
+  return ta - tb
+}
+
+const AGE_BADGE_CLASS: Record<AgeLevel, string> = {
+  fresh: 'bg-ironman-navy-50 text-ironman-navy/80',
+  aging: 'bg-amber-100 text-amber-800',
+  urgent: 'bg-ironman-red-50 text-ironman-red-dark'
+}
+
+const AGE_BADGE_LABEL: Record<AgeLevel, string> = {
+  fresh: 'Fresh',
+  aging: 'Aging',
+  urgent: 'Urgent'
+}
+
+function PriorityHeader({
+  age,
+  level,
+  isNextUp
+}: {
+  age: number
+  level: AgeLevel
+  isNextUp: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span
+        className={cn(
+          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
+          AGE_BADGE_CLASS[level]
+        )}
+      >
+        <AlarmClock className="h-3 w-3" aria-hidden />
+        {AGE_BADGE_LABEL[level]} · {formatAge(age)}
+      </span>
+      {isNextUp ? (
+        <span className="inline-flex items-center gap-1 rounded-full bg-ironman-red px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-soft">
+          <ArrowDown className="h-3 w-3" aria-hidden />
+          Next up
+        </span>
+      ) : null}
+    </div>
+  )
+}
 
 export function WorkerDashboard() {
   const token = useAuthStore((state) => state.accessToken)
@@ -46,6 +138,7 @@ export function WorkerDashboard() {
   }, [error])
 
   const groups = useMemo(() => {
+    const now = Date.now()
     const grouped = new Map<AssignmentType, Assignment[]>()
     for (const assignment of assignments) {
       const type = assignment.assignmentType
@@ -54,10 +147,12 @@ export function WorkerDashboard() {
       bucket.push(assignment)
       grouped.set(type, bucket)
     }
-    return STATION_ORDER.map((type) => ({
-      type,
-      items: grouped.get(type) ?? []
-    })).filter((group) => group.items.length > 0)
+    return STATION_ORDER.map((type) => {
+      const items = (grouped.get(type) ?? []).slice().sort(compareForQueue)
+      // "Next up" = first item not already in progress, in queue order.
+      const nextUpId = items.find((a) => a.status === 'pending' || a.status === 'accepted')?.id ?? null
+      return { type, items, nextUpId, now }
+    }).filter((group) => group.items.length > 0)
   }, [assignments])
 
   const selectedAssignments = useMemo(
@@ -154,8 +249,18 @@ export function WorkerDashboard() {
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {group.items.map((assignment) => {
                   const isOpen = expandedId === assignment.id
+                  const age = ageMinutes(assignment.assignedAt, group.now)
+                  const level = ageLevelFromMinutes(age)
+                  const isNextUp = group.nextUpId === assignment.id
                   return (
-                    <div key={assignment.id} className="space-y-2">
+                    <div
+                      key={assignment.id}
+                      className={cn(
+                        'space-y-2 rounded-xl transition',
+                        isNextUp && 'p-2 -m-2 bg-ironman-red-50/40 ring-1 ring-ironman-red/15'
+                      )}
+                    >
+                      <PriorityHeader age={age} level={level} isNextUp={isNextUp} />
                       <AssignmentCard
                         assignment={assignment}
                         selectable
