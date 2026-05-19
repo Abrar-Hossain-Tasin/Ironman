@@ -13,7 +13,8 @@ import {
   PackagePlus,
   RefreshCw,
   Truck,
-  UserRound
+  UserRound,
+  Wallet
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
@@ -25,7 +26,7 @@ import { apiFetch } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { orderToSummary } from '@/lib/mappers'
 import { cn, formatBdt, statusLabel } from '@/lib/utils'
-import type { OrderResponse, OrderSearchResponse, OrderStatus } from '@/types'
+import type { OrderResponse, OrderSearchResponse, OrderStatus, PaymentMethod } from '@/types'
 
 const WIDE_PAGE_SIZE = 200
 const RECENT_COUNT = 8
@@ -84,6 +85,60 @@ function pickActiveOrder(orders: OrderResponse[]): OrderResponse | null {
       // Tie-break by most recent update so the active card always feels live.
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     })[0]
+}
+
+// ─── Payment-due categorization ─────────────────────────────────────────────
+// Three buckets, in descending urgency:
+//   overdue   — order is delivered but balance is still outstanding
+//   pending   — non-COD method + balance > 0, order still in flight (gateway not completed)
+//   cod       — COD method + balance > 0, order still in flight (cash expected at pickup/delivery)
+// Cancelled orders are excluded; the banner picks the highest-urgency bucket.
+
+type DueEntry = {
+  orderId: string
+  orderNumber: string
+  amount: number
+  method: PaymentMethod
+}
+
+type DueSummary = {
+  overdue: DueEntry[]
+  pending: DueEntry[]
+  cod: DueEntry[]
+}
+
+const METHOD_LABEL: Record<PaymentMethod, string> = {
+  cod: 'cash',
+  online: 'online',
+  bkash: 'bKash',
+  nagad: 'Nagad',
+  rocket: 'Rocket',
+  card: 'card'
+}
+
+function summarizeDue(orders: OrderResponse[]): DueSummary {
+  const overdue: DueEntry[] = []
+  const pending: DueEntry[] = []
+  const cod: DueEntry[] = []
+  for (const o of orders) {
+    if (o.status === 'cancelled') continue
+    const amount = Math.max(0, Number(o.totalAmount) - Number(o.paidAmount))
+    if (amount <= 0) continue
+    const entry: DueEntry = { orderId: o.id, orderNumber: o.orderNumber, amount, method: o.paymentMethod }
+    if (o.status === 'delivered') overdue.push(entry)
+    else if (o.paymentMethod === 'cod') cod.push(entry)
+    else pending.push(entry)
+  }
+  // Largest balance first so banner's deep-link targets the most material order.
+  const byAmountDesc = (a: DueEntry, b: DueEntry) => b.amount - a.amount
+  overdue.sort(byAmountDesc)
+  pending.sort(byAmountDesc)
+  cod.sort(byAmountDesc)
+  return { overdue, pending, cod }
+}
+
+function sumAmount(entries: DueEntry[]): number {
+  return entries.reduce((s, e) => s + e.amount, 0)
 }
 
 function firstName(fullName: string | undefined) {
@@ -237,29 +292,111 @@ function ActiveOrderCard({ order, dueAmount }: { order: OrderResponse; dueAmount
   )
 }
 
-function PaymentDueBanner({ amount, orderId }: { amount: number; orderId: string | null }) {
-  return (
-    <div
-      role="status"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-    >
-      <div className="flex items-start gap-2">
-        <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" aria-hidden />
-        <p>
-          You have <strong>{formatBdt(amount)}</strong> awaiting payment across recent orders.
-        </p>
-      </div>
-      {orderId && (
+function PaymentDueBanner({ summary }: { summary: DueSummary }) {
+  // Show the highest-urgency non-empty bucket. Returns null when nothing is due.
+  if (summary.overdue.length > 0) {
+    const total = sumAmount(summary.overdue)
+    const head = summary.overdue[0]
+    return (
+      <div
+        role="alert"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ironman-red-100 bg-ironman-red-50 px-4 py-3 text-sm text-ironman-red-dark"
+      >
+        <div className="flex items-start gap-2.5">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-ironman-red" aria-hidden />
+          <p className="leading-relaxed">
+            <strong className="font-semibold">Payment overdue.</strong>{' '}
+            {summary.overdue.length === 1 ? (
+              <>
+                Order {head.orderNumber} has <strong>{formatBdt(total)}</strong> outstanding.
+              </>
+            ) : (
+              <>
+                <strong>{formatBdt(total)}</strong> across {summary.overdue.length} delivered orders.
+              </>
+            )}
+          </p>
+        </div>
         <Link
-          href={`/customer/orders/${orderId}`}
-          className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-700"
+          href={`/customer/orders/${head.orderId}`}
+          className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-ironman-red px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-ironman-red-dark"
         >
           Settle now
           <ArrowRight className="h-3.5 w-3.5" aria-hidden />
         </Link>
-      )}
-    </div>
-  )
+      </div>
+    )
+  }
+
+  if (summary.pending.length > 0) {
+    const total = sumAmount(summary.pending)
+    const head = summary.pending[0]
+    const methodLabel = METHOD_LABEL[head.method] ?? 'online'
+    return (
+      <div
+        role="status"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+      >
+        <div className="flex items-start gap-2.5">
+          <Wallet className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" aria-hidden />
+          <p className="leading-relaxed">
+            {summary.pending.length === 1 ? (
+              <>
+                <strong className="font-semibold">Complete {methodLabel} payment</strong> for order {head.orderNumber}:{' '}
+                <strong>{formatBdt(total)}</strong>.
+              </>
+            ) : (
+              <>
+                <strong>{formatBdt(total)}</strong> awaiting online payment across {summary.pending.length} orders.
+              </>
+            )}
+          </p>
+        </div>
+        <Link
+          href={`/customer/orders/${head.orderId}`}
+          className="focus-ring inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-700"
+        >
+          Pay now
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+        </Link>
+      </div>
+    )
+  }
+
+  if (summary.cod.length > 0) {
+    const total = sumAmount(summary.cod)
+    const head = summary.cod[0]
+    return (
+      <div
+        role="status"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ironman-navy-100 bg-ironman-navy-50/80 px-4 py-3 text-sm text-ironman-navy"
+      >
+        <div className="flex items-start gap-2.5">
+          <Wallet className="mt-0.5 h-4 w-4 flex-shrink-0 text-ironman-navy/80" aria-hidden />
+          <p className="leading-relaxed">
+            {summary.cod.length === 1 ? (
+              <>
+                Have <strong>{formatBdt(total)}</strong> in cash ready for order {head.orderNumber}.
+              </>
+            ) : (
+              <>
+                Have <strong>{formatBdt(total)}</strong> in cash ready across {summary.cod.length} upcoming orders.
+              </>
+            )}
+          </p>
+        </div>
+        <Link
+          href={`/customer/orders/${head.orderId}`}
+          className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-ironman-navy/20 bg-white px-3 py-1.5 text-xs font-semibold text-ironman-navy transition-colors hover:bg-ironman-navy-50"
+        >
+          View order
+          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+        </Link>
+      </div>
+    )
+  }
+
+  return null
 }
 
 // ─── Recent orders — card list on mobile, table on md+ ──────────────────────
@@ -365,20 +502,7 @@ export function CustomerDashboard() {
       }, 0),
     [orders]
   )
-  // Pick the order with the biggest balance to deep-link the "Settle now" banner.
-  const orderWithBiggestDue = useMemo(() => {
-    let chosen: OrderResponse | null = null
-    let chosenDue = 0
-    for (const o of orders) {
-      if (o.status === 'cancelled') continue
-      const due = Math.max(0, Number(o.totalAmount) - Number(o.paidAmount))
-      if (due > chosenDue) {
-        chosen = o
-        chosenDue = due
-      }
-    }
-    return chosen
-  }, [orders])
+  const dueSummary = useMemo(() => summarizeDue(orders), [orders])
 
   const activeOrderDue = activeOrder
     ? Math.max(0, Number(activeOrder.totalAmount) - Number(activeOrder.paidAmount))
@@ -470,6 +594,9 @@ export function CustomerDashboard() {
         </div>
       ) : (
         <div className="space-y-6">
+          {/* ── Payment-due banner (above-fold; severity-aware, returns null when nothing is due) */}
+          <PaymentDueBanner summary={dueSummary} />
+
           {/* ── Active order hero (or "nothing in flight" hint) ─────────── */}
           {activeOrder ? (
             <ActiveOrderCard order={activeOrder} dueAmount={activeOrderDue} />
@@ -485,11 +612,6 @@ export function CustomerDashboard() {
                 Place an order
               </Link>
             </div>
-          )}
-
-          {/* ── Awaiting-payment banner (covers non-active orders too) ──── */}
-          {totalDue > 0 && totalDue !== activeOrderDue && (
-            <PaymentDueBanner amount={totalDue} orderId={orderWithBiggestDue?.id ?? null} />
           )}
 
           {/* ── KPI row ─────────────────────────────────────────────────── */}
