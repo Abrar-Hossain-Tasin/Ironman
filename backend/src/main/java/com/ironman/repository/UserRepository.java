@@ -22,16 +22,20 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   /**
    * Customer-list page with a free-text filter over name / email / phone.
-   * Sorted by user.createdAt desc — newest signups first. We hand the role
-   * filter in JPQL rather than rely on enum binding quirks.
+   * Role is passed as a parameter (matches findByRole / findByRoleIn pattern)
+   * because inlining the JPQL enum literal binds the param as varchar and
+   * never matches the Postgres user_role enum column.
    */
   @Query(
       "select u from User u "
-          + "where u.role = com.ironman.model.UserRole.customer "
+          + "where u.role = :role "
           + "  and (:q is null or :q = '' "
           + "       or lower(u.fullName) like lower(concat('%', :q, '%')) "
           + "       or lower(u.email) like lower(concat('%', :q, '%')) "
           + "       or lower(u.phone) like lower(concat('%', :q, '%'))) "
           + "order by u.createdAt desc")
-  Page<User> searchCustomers(@Param("q") String query, Pageable pageable);
+  Page<User> searchCustomers(
+      @Param("q") String query,
+      @Param("role") UserRole role,
+      Pageable pageable);
 }

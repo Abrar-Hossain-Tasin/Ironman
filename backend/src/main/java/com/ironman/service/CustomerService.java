@@ -53,6 +53,7 @@ public class CustomerService {
     int safeSize = Math.min(100, Math.max(1, size));
     var users = userRepository.searchCustomers(
         query == null ? "" : query.trim(),
+        UserRole.customer,
         PageRequest.of(safePage, safeSize));
 
     List<UUID> ids = users.getContent().stream().map(User::getId).toList();
