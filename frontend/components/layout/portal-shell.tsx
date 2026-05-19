@@ -3,12 +3,27 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
-import { Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
+import { Menu, PanelLeftClose, PanelLeftOpen, Search, X } from 'lucide-react'
 import { LogoutButton } from '@/components/auth/logout-button'
 import { LanguageToggle } from '@/components/language-toggle'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { Icon } from '@/components/ui/icon'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { cn } from '@/lib/utils'
+
+function dispatchCommandPalette() {
+  // The AdminCommandPalette listens for ⌘/Ctrl+K globally; fire a synthetic
+  // event so the trigger button works the same way for mouse users.
+  if (typeof window === 'undefined') return
+  const event = new KeyboardEvent('keydown', {
+    key: 'k',
+    code: 'KeyK',
+    ctrlKey: !navigator.userAgent.includes('Mac'),
+    metaKey: navigator.userAgent.includes('Mac'),
+    bubbles: true
+  })
+  document.dispatchEvent(event)
+}
 
 type PortalShellProps = {
   title: string
@@ -177,9 +192,23 @@ export function PortalShell({ title, subtitle, nav, children }: PortalShellProps
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-ironman-red">{subtitle}</p>
                 <h1 className="text-2xl font-bold text-ironman-navy">{title}</h1>
+                <Breadcrumbs className="mt-1" />
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={dispatchCommandPalette}
+                aria-label="Open command palette"
+                title="Search (⌘K)"
+                className="focus-ring hidden h-10 items-center gap-2 rounded-full border border-ironman-navy-100 bg-white px-3 text-xs font-semibold text-ironman-navy/70 hover:bg-ironman-navy-50 hover:text-ironman-navy md:inline-flex"
+              >
+                <Search className="h-4 w-4" aria-hidden />
+                <span>Search</span>
+                <kbd className="rounded border border-ironman-navy-100 bg-ironman-navy-50 px-1 py-0.5 text-[10px] font-bold uppercase">
+                  ⌘K
+                </kbd>
+              </button>
               <LanguageToggle compact />
               <NotificationBell />
               <LogoutButton />

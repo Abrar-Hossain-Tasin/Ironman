@@ -13,8 +13,10 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { RequireAuth } from '@/components/auth/require-auth'
+import { PulseWidgets } from '@/components/admin/pulse-widgets'
 import { MetricCard } from '@/components/ui/metric-card'
 import { OrderTable } from '@/components/orders/order-table'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { Icon } from '@/components/ui/icon'
 import { DashboardSkeleton } from '@/components/ui/skeleton'
 import { apiFetch } from '@/lib/api'
@@ -435,6 +437,11 @@ export function AdminDashboard() {
               </Link>
             </div>
           </div>
+
+          {/* ── Pulse widgets (Recharts) ─────────────────────────────────── */}
+          <ErrorBoundary title="The pulse widgets hit an error.">
+            <PulseWidgets orders={orders} payments={payments} />
+          </ErrorBoundary>
 
           {/* ── KPI row ─────────────────────────────────────────────────── */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
